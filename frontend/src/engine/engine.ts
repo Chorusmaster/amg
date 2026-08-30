@@ -1,22 +1,24 @@
 import AssetManager from "./asset-manager";
 import GameLoop from "./gameloop";
 import Renderer from "./renderer";
+import Input from "./input";
 
 import Vector2 from "./vector2";
 
 export interface Game {
-  initialize(assetManager: AssetManager, viewportSize: Vector2): Promise<void>;
+  initialize(assetManager: AssetManager, input: Input, viewportSize: Vector2): Promise<void>;
   update: (dt: number) => void;
   render: (renderer: Renderer) => void;
   resize: (viewportSize: Vector2) => void;
 }
 
 export default class Engine {
+  private canvas: HTMLCanvasElement;
   private gameLoop: GameLoop;
   private renderer: Renderer;
   private assetManager: AssetManager;
+  private input: Input;
   private game: Game;
-  private canvas: HTMLCanvasElement;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -25,6 +27,7 @@ export default class Engine {
     this.canvas = canvas;
     this.renderer = new Renderer(this.canvas);
     this.assetManager = new AssetManager();
+    this.input = new Input(this.canvas);
     this.game = game;
 
     this.gameLoop = new GameLoop(
@@ -39,7 +42,8 @@ export default class Engine {
 
   async start() {
     await this.game.initialize(
-      this.assetManager, 
+      this.assetManager,
+      this.input, 
       new Vector2(this.canvas.width, this.canvas.height)
     );
 

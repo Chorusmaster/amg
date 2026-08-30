@@ -5,11 +5,20 @@ import Input from "./input";
 
 import Vector2 from "./vector2";
 
+const defaultSettings: GameSettings = {
+  imageSmoothing: false
+}
+
 export interface Game {
   initialize(assetManager: AssetManager, input: Input, viewportSize: Vector2): Promise<void>;
   update: (dt: number) => void;
   render: (renderer: Renderer) => void;
   resize: (viewportSize: Vector2) => void;
+  settings?: GameSettings;
+}
+
+export interface GameSettings {
+  imageSmoothing: boolean;
 }
 
 export default class Engine {
@@ -25,7 +34,7 @@ export default class Engine {
     game: Game
   ) {
     this.canvas = canvas;
-    this.renderer = new Renderer(this.canvas);
+    this.renderer = new Renderer(this.canvas, game.settings?.imageSmoothing ?? defaultSettings.imageSmoothing);
     this.assetManager = new AssetManager();
     this.input = new Input(this.canvas);
     this.game = game;

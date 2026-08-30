@@ -4,13 +4,23 @@ import type { Game } from "../engine/engine";
 import Camera from "../engine/camera";
 import Vector2 from "../engine/vector2";
 import Input from "../engine/input";
+import World from "./world";
+import BlockRegistry from "./block-registry";
 
 export default class SandboxGame implements Game {
   private initialized = false;
   private camera!: Camera;
   private input!: Input;
+  private blockRegistry!: BlockRegistry;
 
+  private world!: World;
+
+  private playerImage!: HTMLImageElement;
   private dirt!: HTMLImageElement;
+
+  readonly settings = {
+    imageSmoothing: false
+  }
 
   async initialize(
     assetManager: AssetManager,
@@ -20,8 +30,15 @@ export default class SandboxGame implements Game {
     this.camera = new Camera(viewportSize);
     this.input = input;
 
+    await assetManager.loadImage("player", "/assets/horus_2_0.png");
+    this.playerImage = assetManager.getImage("player");
+
     await assetManager.loadImage("dirt", "/assets/dirt.png");
     this.dirt = assetManager.getImage("dirt");
+
+    this.blockRegistry = await BlockRegistry.create(assetManager);
+    this.world = new World(this.blockRegistry.blocksRegistry);
+    this.world.generate();
 
     this.initialized = true;
   }
@@ -52,5 +69,7 @@ export default class SandboxGame implements Game {
       new Vector2(0, 0),
       new Vector2(32, 32),
     );
+
+    this.world.render(renderer, this.camera);
   }
 }

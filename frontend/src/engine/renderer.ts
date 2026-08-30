@@ -4,7 +4,7 @@ import Vector2 from "./vector2";
 export default class Renderer {
   private ctx: CanvasRenderingContext2D;
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, imageSmoothing: boolean) {
     const ctx = canvas.getContext("2d");
 
     if (!ctx) {
@@ -12,6 +12,7 @@ export default class Renderer {
     }
 
     this.ctx = ctx;
+    ctx.imageSmoothingEnabled = imageSmoothing;
   }
 
   public clear(color: string) {

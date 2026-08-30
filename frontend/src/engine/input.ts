@@ -42,13 +42,11 @@ export default class Input {
   private handleMouseDown = (e: PointerEvent) => {
     e.preventDefault();
     this.mouseButtons.add(e.button);
-    console.log("DOWN:", e.button, e.buttons);
   };
 
   private handleMouseUp = (e: PointerEvent) => {
     e.preventDefault();
     this.mouseButtons.delete(e.button);
-    console.log("UP:", e.button, e.buttons);
   };
 
   private handleMouseMove = (e: PointerEvent) => {

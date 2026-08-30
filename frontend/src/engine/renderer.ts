@@ -1,7 +1,10 @@
+import Camera from "./camera";
+import Vector2 from "./vector2";
+
 export default class Renderer {
   private ctx: CanvasRenderingContext2D;
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, imageSmoothing: boolean) {
     const ctx = canvas.getContext("2d");
 
     if (!ctx) {
@@ -9,6 +12,7 @@ export default class Renderer {
     }
 
     this.ctx = ctx;
+    ctx.imageSmoothingEnabled = imageSmoothing;
   }
 
   public clear(color: string) {
@@ -24,11 +28,25 @@ export default class Renderer {
 
   public drawImage(
     image: HTMLImageElement,
-    x: number,
-    y: number,
-    width: number,
-    height: number
+    position: Vector2,
+    size: Vector2
   ) {
-    this.ctx.drawImage(image, x, y, width, height);
+    this.ctx.drawImage(image, position.x, position.y, size.x, size.y);
+  }
+
+  drawWorldImage(
+    image: HTMLImageElement,
+    camera: Camera,
+    position: Vector2,
+    size: Vector2
+  ) {
+    const screenSize = size.multiply(camera.zoom);
+    const screenPosition = camera.worldToScreen(position).subtract(screenSize.multiply(0.5));
+
+    this.drawImage(
+      image,
+      screenPosition,
+      screenSize
+    );
   }
 }

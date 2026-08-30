@@ -1,25 +1,42 @@
 import AssetManager from "./asset-manager";
 import GameLoop from "./gameloop";
 import Renderer from "./renderer";
+import Input from "./input";
+
+import Vector2 from "./vector2";
+
+const defaultSettings: GameSettings = {
+  imageSmoothing: false
+}
 
 export interface Game {
-  initialize(assets: AssetManager): Promise<void>;
+  initialize(assetManager: AssetManager, input: Input, viewportSize: Vector2): Promise<void>;
   update: (dt: number) => void;
   render: (renderer: Renderer) => void;
+  resize: (viewportSize: Vector2) => void;
+  settings?: GameSettings;
+}
+
+export interface GameSettings {
+  imageSmoothing: boolean;
 }
 
 export default class Engine {
+  private canvas: HTMLCanvasElement;
   private gameLoop: GameLoop;
   private renderer: Renderer;
   private assetManager: AssetManager;
+  private input: Input;
   private game: Game;
 
   constructor(
     canvas: HTMLCanvasElement,
     game: Game
   ) {
-    this.renderer = new Renderer(canvas);
+    this.canvas = canvas;
+    this.renderer = new Renderer(this.canvas, game.settings?.imageSmoothing ?? defaultSettings.imageSmoothing);
     this.assetManager = new AssetManager();
+    this.input = new Input(this.canvas);
     this.game = game;
 
     this.gameLoop = new GameLoop(
@@ -28,8 +45,16 @@ export default class Engine {
     );
   }
 
+  resize(width: number, height: number) {
+    this.game.resize(new Vector2(width, height));
+  }
+
   async start() {
-    await this.game.initialize(this.assetManager);
+    await this.game.initialize(
+      this.assetManager,
+      this.input, 
+      new Vector2(this.canvas.width, this.canvas.height)
+    );
 
     this.gameLoop.start();
   }

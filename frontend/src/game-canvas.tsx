@@ -12,23 +12,28 @@ export default function GameCanvas() {
 
     if (!canvas || !container) return;
 
+    const sandboxGame = new SandboxGame();
+    const gameEngine = new Engine(canvas, sandboxGame);
+
     const resize = () => {
       const { width, height } = container.getBoundingClientRect();
 
       canvas.width = width;
       canvas.height = height;
+
+      gameEngine.resize(width, height);
     };
 
     const observer = new ResizeObserver(resize);
     observer.observe(container);
 
     resize();
-
-    const sandboxGame = new SandboxGame();
-    const gameEngine = new Engine(canvas, sandboxGame);
     gameEngine.start();
 
-    return () => observer.disconnect();
+    return () => {
+      observer.disconnect();
+      gameEngine.stop();
+    }
   }, []);
 
   return (

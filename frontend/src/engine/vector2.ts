@@ -21,7 +21,7 @@ export default class Vector2 {
   multiply(scalar: number): Vector2 {
     return new Vector2(this.x * scalar, this.y * scalar);
   }
-
+  
   length(): number {
     return Math.sqrt(this.x ** 2 + this.y ** 2);
   }

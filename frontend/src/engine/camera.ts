@@ -14,29 +14,34 @@ export default class Camera {
   }
 
   get zoom() {
-    return this.zoomLevel
+    return this.zoomLevel;
   }
 
   set zoom(zoom: number) {
     this.zoomLevel = zoom;
   }
 
-  setViewportSize(viewportSize: Vector2) {
+  get viewport() {
+    return this.viewportSize;
+  }
+
+  set viewport(viewportSize: Vector2) {
+    if (viewportSize.x < 10 || viewportSize.y < 10) throw new Error("Camera is too small");
     this.viewportSize = viewportSize;
   }
 
   worldToScreen(coords: Vector2) {
-    return coords
-      .subtract(this.pos)
-      .multiply(this.zoomLevel)
-      .add(this.viewportSize.multiply(0.5));
+    return new Vector2(
+      (coords.x - this.pos.x) * this.zoomLevel + this.viewportSize.x * 0.5,
+      (this.pos.y - coords.y) * this.zoomLevel + this.viewportSize.y * 0.5
+    );
   }
 
   screenToWorld(coords: Vector2) {
-    return coords
-      .subtract(this.viewportSize.multiply(0.5))
-      .multiply(1 / this.zoomLevel)
-      .add(this.pos);
+    return new Vector2(
+      (coords.x - this.viewportSize.x * 0.5) / this.zoomLevel + this.pos.x,
+      this.pos.y - (coords.y - this.viewportSize.y * 0.5) / this.zoomLevel
+    );
   }
 
   move(vector: Vector2) {

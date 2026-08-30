@@ -16,7 +16,6 @@ export default class SandboxGame implements Game {
   private world!: World;
 
   private playerImage!: HTMLImageElement;
-  private dirt!: HTMLImageElement;
 
   readonly settings = {
     imageSmoothing: false
@@ -33,12 +32,8 @@ export default class SandboxGame implements Game {
     await assetManager.loadImage("player", "/assets/horus_2_0.png");
     this.playerImage = assetManager.getImage("player");
 
-    await assetManager.loadImage("dirt", "/assets/dirt.png");
-    this.dirt = assetManager.getImage("dirt");
-
     this.blockRegistry = await BlockRegistry.create(assetManager);
     this.world = new World(this.blockRegistry.blocksRegistry);
-    this.world.generate();
 
     this.initialized = true;
   }
@@ -46,7 +41,7 @@ export default class SandboxGame implements Game {
   resize(viewportSize: Vector2) {
     if (!this.initialized) return;
 
-    this.camera.setViewportSize(viewportSize);
+    this.camera.viewport = viewportSize;
   }
 
   update(dt: number) {
@@ -55,6 +50,8 @@ export default class SandboxGame implements Game {
 
     if (this.input.isKeyDown("KeyA")) this.camera.move(new Vector2(-1, 0));
     if (this.input.isKeyDown("KeyD")) this.camera.move(new Vector2(1, 0));
+    if (this.input.isKeyDown("KeyW")) this.camera.move(new Vector2(0, 1));
+    if (this.input.isKeyDown("KeyS")) this.camera.move(new Vector2(0, -1));
   }
 
   render(renderer: Renderer) {
@@ -62,13 +59,6 @@ export default class SandboxGame implements Game {
       throw new Error("Game must be initialized first to render");
 
     renderer.clear("skyblue");
-
-    renderer.drawWorldImage(
-      this.dirt,
-      this.camera,
-      new Vector2(0, 0),
-      new Vector2(32, 32),
-    );
 
     this.world.render(renderer, this.camera);
   }

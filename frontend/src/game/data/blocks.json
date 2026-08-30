@@ -10,5 +10,9 @@
   {
     "name": "grass",
     "texture": "grass"
+  },
+  {
+    "name": "stone",
+    "texture": "stone"
   }
 ]

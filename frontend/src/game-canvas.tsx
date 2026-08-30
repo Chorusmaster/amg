@@ -1,4 +1,6 @@
 import { useEffect, useRef } from "react";
+import Engine from "./engine/engine";
+import SandboxGame from "./game/game";
 
 export default function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -21,6 +23,10 @@ export default function GameCanvas() {
     observer.observe(container);
 
     resize();
+
+    const sandboxGame = new SandboxGame();
+    const gameEngine = new Engine(canvas, sandboxGame);
+    gameEngine.start();
 
     return () => observer.disconnect();
   }, []);

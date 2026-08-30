@@ -1,4 +1,4 @@
-import GameCanvas from "./engine/game-canvas"
+import GameCanvas from "./game-canvas"
 
 function App() {
   
@@ -9,4 +9,4 @@ function App() {
   )
 }
 
-export default App
+export default App;

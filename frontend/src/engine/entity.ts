@@ -1,14 +1,13 @@
 import Transform from "./transform";
-import Vector2 from "./vector2";
 
 export default class Entity {
-  readonly transform = new Transform();
-  readonly name;
-  readonly image;
+  readonly transform: Transform;
+  readonly name: string;
+  readonly image: HTMLImageElement;
 
-  constructor(name: string, image: HTMLImageElement, position: Vector2) {
+  constructor(name: string, image: HTMLImageElement, transform: Transform) {
     this.name = name;
     this.image = image;
-    this.transform.position = position;
+    this.transform = transform;
   }
 }

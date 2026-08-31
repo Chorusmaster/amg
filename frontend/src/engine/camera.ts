@@ -13,6 +13,10 @@ export default class Camera {
     return this.pos;
   }
 
+  set position(pos: Vector2) {
+    this.pos = pos;
+  }
+
   get zoom() {
     return this.zoomLevel;
   }

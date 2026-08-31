@@ -18,5 +18,15 @@
     "name": "stone",
     "texture": "stone",
     "solid": true
+  },
+  {
+    "name": "coal_ore",
+    "texture": "coal_ore",
+    "solid": true
+  },
+  {
+    "name": "sand",
+    "texture": "sand",
+    "solid": true
   }
 ]

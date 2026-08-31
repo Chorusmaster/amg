@@ -9,8 +9,7 @@ import type Renderer from "../engine/renderer";
 import type World from "./world";
 import type AssetManager from "../engine/asset-manager";
 import AABB from "../engine/physics/AABB";
-
-const SHOW_HITBOX = true;
+import { SHOW_HITBOXES } from "./data/settings";
 
 export default class Player extends Entity {
   readonly speed = 100;
@@ -128,7 +127,7 @@ export default class Player extends Entity {
       this.transform.scale,
     );
 
-    if (SHOW_HITBOX) {
+    if (SHOW_HITBOXES) {
       const collider = this.physicsBody.collider!;
       const colliderSize = collider.getBounds(this.physicsBody.transform);
       renderer.drawWorldImage(

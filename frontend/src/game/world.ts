@@ -71,6 +71,10 @@ export default class World implements CollisionWorld {
 
   // BLOCKS
 
+  isSolid(blockId: number) {
+    return this.blocksRegistryList[blockId].solid;
+  }
+
   getBlock(x: number, y: number) {
     const chunkX = this.worldToChunkCoord(x);
     const chunkY = this.worldToChunkCoord(y);
@@ -221,7 +225,7 @@ export default class World implements CollisionWorld {
         const block = this.getBlock(x, y);
         
         if (!block) continue;
-        if (!this.blocksRegistryList[block].solid) continue;
+        if (!this.isSolid(block)) continue;
 
         const bounds = this.getBlockBounds(this.blockToWorldCoords(x, y));
 

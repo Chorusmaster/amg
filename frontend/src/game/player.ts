@@ -9,8 +9,9 @@ import type Renderer from "../engine/renderer";
 import type World from "./world";
 import type AssetManager from "../engine/asset-manager";
 import AABB from "../engine/physics/AABB";
+import { BLOCK_SIZE } from "./data/settings";
 
-const SHOW_HITBOX = true;
+const SHOW_HITBOX = false;
 
 export default class Player extends Entity {
   readonly speed = 100;
@@ -22,6 +23,9 @@ export default class Player extends Entity {
   private assetManager: AssetManager;
   private input: Input;
   private world: World;
+
+  private worldMouseCoords: Vector2 = new Vector2();
+  private blockMouseCoords: Vector2 = new Vector2();
 
   constructor(
     assetManager: AssetManager,
@@ -68,19 +72,38 @@ export default class Player extends Entity {
     return this.world.getCollisions(checkBounds).length > 0;
   }
 
-  private canPlaceBlock(coords: Vector2): boolean {
-    const blockBounds = this.world.getBlockBounds(coords);
+  private selectionInteractable() {
+    return this.transform.position.distanceTo(this.worldMouseCoords) <= this.interactionRange;
+  }
+
+  private selectionInterferePlayer(): boolean {
+    const blockBounds = this.world.getBlockBounds(this.worldMouseCoords);
 
     const playerBounds = this.physicsBody.collider!.getBounds(
       this.transform
     );
 
-    return !(
+    return (
       playerBounds.max.x > blockBounds.min.x &&
       playerBounds.min.x < blockBounds.max.x &&
       playerBounds.max.y > blockBounds.min.y &&
       playerBounds.min.y < blockBounds.max.y
     );
+  }
+
+  private selectionContactsWithBlocks(): boolean {
+    const blockCoords = this.blockMouseCoords;
+
+    const upperBlock = this.world.getBlock(blockCoords.x, blockCoords.y + 1);
+    const lowerBlock = this.world.getBlock(blockCoords.x, blockCoords.y - 1);
+    const rightBlock = this.world.getBlock(blockCoords.x + 1, blockCoords.y);
+    const leftBlock = this.world.getBlock(blockCoords.x - 1, blockCoords.y);
+
+    return !!(upperBlock || lowerBlock || rightBlock || leftBlock);
+  }
+
+  private selectionInterferesBlock(): boolean {
+    return !!this.world.getBlock(this.blockMouseCoords.x, this.blockMouseCoords.y);
   }
 
   update(dt: number) {
@@ -99,24 +122,24 @@ export default class Player extends Entity {
       this.physicsBody.velocity.y = this.jumpForce;
     }
 
+    this.worldMouseCoords = this.camera.screenToWorld(this.input.mousePosition);
+    this.blockMouseCoords = this.world.worldToBlockCoords(this.worldMouseCoords);
+
     if (this.input.isMouseButtonDown(0)) {
-      const worldCoords = this.camera.screenToWorld(this.input.mousePosition);
-      
-      if (this.transform.position.distanceTo(worldCoords) > this.interactionRange) 
+      if (!this.selectionInteractable())
         return;
 
-      const {x: blockX, y: blockY} = this.world.worldToBlockCoords(worldCoords);
+      const {x: blockX, y: blockY} = this.world.worldToBlockCoords(this.worldMouseCoords);
       this.world.setBlock(blockX, blockY, 0);
     }
 
     if (this.input.isMouseButtonDown(2)) {
-      const worldCoords = this.camera.screenToWorld(this.input.mousePosition);
-      
-      if (this.transform.position.distanceTo(worldCoords) > this.interactionRange) 
-        return;
-
-      const blockCoords = this.world.worldToBlockCoords(worldCoords);
-      if (this.canPlaceBlock(worldCoords)) this.world.setBlock(blockCoords.x, blockCoords.y, 1);
+      if (!this.selectionInteractable()) return;
+      if (!this.selectionContactsWithBlocks()) return;
+      if (this.selectionInterferePlayer()) return;
+      if (this.selectionInterferesBlock()) return;
+        
+      this.world.setBlock(this.blockMouseCoords.x, this.blockMouseCoords.y, 1);
     }
   }
 
@@ -127,6 +150,23 @@ export default class Player extends Entity {
       this.transform.position,
       this.transform.scale,
     );
+
+    const selectionVisible = 
+      this.selectionInteractable() 
+      && (
+        this.selectionContactsWithBlocks() ||
+        this.selectionInterferesBlock()
+      )
+      && !this.selectionInterferePlayer();
+
+    if (selectionVisible) {
+      renderer.drawWorldImage(
+        this.assetManager.getImage("selection"),
+        this.camera,
+        this.blockMouseCoords.multiply(BLOCK_SIZE).add(new Vector2(BLOCK_SIZE / 2, BLOCK_SIZE / 2)),
+        new Vector2(BLOCK_SIZE, BLOCK_SIZE),
+      );
+    }
 
     if (SHOW_HITBOX) {
       const collider = this.physicsBody.collider!;

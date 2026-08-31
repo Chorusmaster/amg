@@ -35,6 +35,7 @@ export default class SandboxGame implements Game {
 
     assetManager.loadImage("player", "/assets/horus_2_0.png");
     assetManager.loadImage("hitbox", "/assets/hitbox.png");
+    assetManager.loadImage("selection", "/assets/selection.png");
 
     this.blockRegistry = await BlockRegistry.create(assetManager);
     this.world = new World(this.blockRegistry.blocksRegistry);

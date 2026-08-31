@@ -9,7 +9,7 @@ import type Renderer from "../engine/renderer";
 import type World from "./world";
 import type AssetManager from "../engine/asset-manager";
 import AABB from "../engine/physics/AABB";
-import { SHOW_HITBOXES } from "./data/settings";
+import { BLOCK_SIZE, SHOW_HITBOXES } from "./data/settings";
 
 export default class Player extends Entity {
   readonly speed = 100;

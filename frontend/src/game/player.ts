@@ -9,9 +9,7 @@ import type Renderer from "../engine/renderer";
 import type World from "./world";
 import type AssetManager from "../engine/asset-manager";
 import AABB from "../engine/physics/AABB";
-import { BLOCK_SIZE } from "./data/settings";
-
-const SHOW_HITBOX = false;
+import { SHOW_HITBOXES } from "./data/settings";
 
 export default class Player extends Entity {
   readonly speed = 100;
@@ -150,7 +148,7 @@ export default class Player extends Entity {
       this.transform.position,
       this.transform.scale,
     );
-
+    
     const selectionVisible = 
       this.selectionInteractable() 
       && (
@@ -168,7 +166,7 @@ export default class Player extends Entity {
       );
     }
 
-    if (SHOW_HITBOX) {
+    if (SHOW_HITBOXES) {
       const collider = this.physicsBody.collider!;
       const colliderSize = collider.getBounds(this.physicsBody.transform);
       renderer.drawWorldImage(

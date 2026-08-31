@@ -17,7 +17,7 @@ export default class BlockRegistry {
         texture &&
         assetManager.loadImage(
           texture,
-          `/assets/${texture}.png`
+          `/assets/blocks/${texture}.png`
         )
       )
     );

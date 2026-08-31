@@ -20,11 +20,15 @@ export default class World implements CollisionWorld {
   private chunks = new Map<string, Chunk>();
   private blocksRegistryList: Block[];
   private worldGenerater: WorldGenerator;
+  readonly seed: string;
   readonly gravityAcceleration = 400;
 
-  constructor(blocksRegistryList: Block[]) {
+  constructor(blocksRegistryList: Block[], seed?: string) {
+    if (!seed) seed = Math.random().toString();
+    this.seed = seed;
+    
     this.blocksRegistryList = blocksRegistryList;
-    this.worldGenerater = new WorldGenerator();
+    this.worldGenerater = new WorldGenerator(this.seed);
   }
 
   // ENTITIES

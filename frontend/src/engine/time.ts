@@ -10,7 +10,7 @@ export default class Time {
       return;
     }
 
-    this.delta = (currentTime - this.lastTime) / 1000;
+    this.delta = Math.min((currentTime - this.lastTime) / 1000, 0.05);
     this.elapsed += this.delta;
     this.lastTime = currentTime;
   }

@@ -72,11 +72,11 @@ export default class Input {
   }
 
   destroy() {
-    window.removeEventListener("keydown", this.handleKeyDown);
-    window.removeEventListener("keyup", this.handleKeyUp);
-    window.removeEventListener("blur", this.handleBlur);
-    window.removeEventListener("pointerdown", this.handleMouseDown);
-    window.removeEventListener("pointerup", this.handleMouseUp);
+    document.removeEventListener("keydown", this.handleKeyDown);
+    document.removeEventListener("keyup", this.handleKeyUp);
+    this.canvas.removeEventListener("blur", this.handleBlur);
+    this.canvas.removeEventListener("pointerdown", this.handleMouseDown);
+    this.canvas.removeEventListener("pointerup", this.handleMouseUp);
 
     this.canvas.removeEventListener("contextmenu", this.handleContextMenu);
     this.canvas.removeEventListener("pointermove", this.handleMouseMove);

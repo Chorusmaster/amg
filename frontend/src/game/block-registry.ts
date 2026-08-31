@@ -27,6 +27,7 @@ export default class BlockRegistry {
         new Block(
           index,
           data.name,
+          data.solid,
           data.texture ? assetManager.getImage(data.texture) : null
         )
     );

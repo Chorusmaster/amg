@@ -6,17 +6,20 @@ import Vector2 from "../engine/vector2";
 import Input from "../engine/input";
 import World from "./world";
 import BlockRegistry from "./block-registry";
+import Physics from "../engine/physics/physics";
+import Player from "./player";
 
 export default class SandboxGame implements Game {
   private initialized = false;
   private camera!: Camera;
-  private input!: Input;
+  private physics!: Physics;
   private blockRegistry!: BlockRegistry;
+  private assetManager!: AssetManager;
 
+  private player!: Player;
   private world!: World;
 
   private playerImage!: HTMLImageElement;
-  private dirt!: HTMLImageElement;
 
   readonly settings = {
     imageSmoothing: false
@@ -28,17 +31,18 @@ export default class SandboxGame implements Game {
     viewportSize: Vector2,
   ) {
     this.camera = new Camera(viewportSize);
-    this.input = input;
+    this.assetManager = assetManager;
 
-    await assetManager.loadImage("player", "/assets/horus_2_0.png");
-    this.playerImage = assetManager.getImage("player");
-
-    await assetManager.loadImage("dirt", "/assets/dirt.png");
-    this.dirt = assetManager.getImage("dirt");
+    assetManager.loadImage("player", "/assets/horus_2_0.png");
+    assetManager.loadImage("hitbox", "/assets/hitbox.png");
 
     this.blockRegistry = await BlockRegistry.create(assetManager);
     this.world = new World(this.blockRegistry.blocksRegistry);
-    this.world.generate();
+
+    this.physics = new Physics(this.world);
+
+    this.player = new Player(assetManager, new Vector2(0, 100), this.camera, input, this.world);
+    this.physics.add(this.player.physicsBody);
 
     this.initialized = true;
   }
@@ -46,15 +50,17 @@ export default class SandboxGame implements Game {
   resize(viewportSize: Vector2) {
     if (!this.initialized) return;
 
-    this.camera.setViewportSize(viewportSize);
+    this.camera.viewport = viewportSize;
   }
 
   update(dt: number) {
-    if (this.initialized === false)
+    if (this.initialized === false) 
       throw new Error("Game must be initialized first to update");
 
-    if (this.input.isKeyDown("KeyA")) this.camera.move(new Vector2(-1, 0));
-    if (this.input.isKeyDown("KeyD")) this.camera.move(new Vector2(1, 0));
+    this.player.update(dt);
+    this.physics.update(dt);
+
+    this.camera.position = this.player.transform.position.clone();
   }
 
   render(renderer: Renderer) {
@@ -63,13 +69,7 @@ export default class SandboxGame implements Game {
 
     renderer.clear("skyblue");
 
-    renderer.drawWorldImage(
-      this.dirt,
-      this.camera,
-      new Vector2(0, 0),
-      new Vector2(32, 32),
-    );
-
     this.world.render(renderer, this.camera);
+    this.player.render(renderer);
   }
 }

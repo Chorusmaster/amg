@@ -39,4 +39,8 @@ export default class Vector2 {
   distanceTo(v: Vector2): number {
     return this.subtract(v).length();
   }
+
+  clone(): Vector2 {
+    return new Vector2(this.x, this.y);
+  }
 }

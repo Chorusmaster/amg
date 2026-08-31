@@ -1,14 +1,22 @@
 [
   {
     "name": "air",
-    "texture": null
+    "texture": null,
+    "solid": false
   },
   {
     "name": "dirt",
-    "texture": "dirt"
+    "texture": "dirt",
+    "solid": true
   },
   {
     "name": "grass",
-    "texture": "grass"
+    "texture": "grass",
+    "solid": true
+  },
+  {
+    "name": "stone",
+    "texture": "stone",
+    "solid": true
   }
 ]

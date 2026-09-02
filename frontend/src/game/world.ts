@@ -7,13 +7,17 @@ import Chunk from "./chunk";
 import WorldGenerator from "./world-generator";
 import type CollisionWorld from "../engine/physics/collision-world";
 import AABB from "../engine/physics/AABB";
+import Item from "./item";
+import type WorldCollider from "../engine/physics/world-collider";
 
-import { 
-  BLOCK_SIZE, 
-  CHUNK_SIZE, 
-  LOADED_CHUNKS_X, 
-  LOADED_CHUNKS_Y 
+import {
+  BLOCK_SIZE,
+  CHUNK_SIZE,
+  LOADED_CHUNKS_X,
+  LOADED_CHUNKS_Y,
 } from "./data/settings";
+import Collider from "../engine/physics/collider";
+import Transform from "../engine/transform";
 
 export default class World implements CollisionWorld {
   private entities: Entity[] = [];
@@ -21,12 +25,12 @@ export default class World implements CollisionWorld {
   private blocksRegistryList: Block[];
   private worldGenerater: WorldGenerator;
   readonly seed: string;
-  readonly gravityAcceleration = 400;
+  readonly gravityAcceleration = 500;
 
   constructor(blocksRegistryList: Block[], seed?: string) {
     if (!seed) seed = Math.random().toString();
     this.seed = seed;
-    
+
     this.blocksRegistryList = blocksRegistryList;
     this.worldGenerater = new WorldGenerator(this.seed);
   }
@@ -38,7 +42,9 @@ export default class World implements CollisionWorld {
   }
 
   add(entity: Entity) {
+    entity.setWorld(this);
     this.entities.push(entity);
+    entity.onAddedToWorld();
   }
 
   remove(entity: Entity) {
@@ -79,6 +85,10 @@ export default class World implements CollisionWorld {
     return this.blocksRegistryList[blockId].solid;
   }
 
+  getBlockData(blockId: number) {
+    return this.blocksRegistryList[blockId];
+  }
+
   getBlock(x: number, y: number) {
     const chunkX = this.worldToChunkCoord(x);
     const chunkY = this.worldToChunkCoord(y);
@@ -101,6 +111,21 @@ export default class World implements CollisionWorld {
 
     const localX = this.worldToLocalCoord(x);
     const localY = this.worldToLocalCoord(y);
+
+    if (block == 0) {
+      const oldBlock = this.getBlockData(this.getBlock(x, y)!);
+      if (oldBlock.id != 0) {
+        const item = new Item(
+          oldBlock.name,
+          oldBlock.texture!,
+          new Vector2(
+            x * BLOCK_SIZE + BLOCK_SIZE * 0.5,
+            y * BLOCK_SIZE + BLOCK_SIZE * 0.5,
+          ),
+        );
+        this.add(item);
+      }
+    }
 
     chunk.set(localX, localY, block);
   }
@@ -145,7 +170,8 @@ export default class World implements CollisionWorld {
   renderChunk(key: string, renderer: Renderer, camera: Camera) {
     const [chunkX, chunkY] = key.split(",");
     const chunk = this.chunks.get(key);
-    if (!chunk) throw new Error("Chunk you are trying to render is not generated yet");
+    if (!chunk)
+      throw new Error("Chunk you are trying to render is not generated yet");
 
     for (let y = 0; y < CHUNK_SIZE; y++) {
       for (let x = 0; x < CHUNK_SIZE; x++) {
@@ -214,31 +240,39 @@ export default class World implements CollisionWorld {
   getBlockBounds(coords: Vector2) {
     return new AABB(
       new Vector2(coords.x - BLOCK_SIZE / 2, coords.y - BLOCK_SIZE / 2),
-      new Vector2(coords.x + BLOCK_SIZE / 2, coords.y + BLOCK_SIZE / 2)
-    )
+      new Vector2(coords.x + BLOCK_SIZE / 2, coords.y + BLOCK_SIZE / 2),
+    );
   }
 
-  getCollisions(bounds: AABB): AABB[] {
+  query(bounds: AABB): WorldCollider[] {
     const minBlockCoords = this.worldToBlockCoords(bounds.min);
     const maxBlockCoords = this.worldToBlockCoords(bounds.max);
 
-    const collisions: AABB[] = [];
+    const worldColliders: WorldCollider[] = [];
 
     for (let y = minBlockCoords.y; y <= maxBlockCoords.y; y++) {
       for (let x = minBlockCoords.x; x <= maxBlockCoords.x; x++) {
         const block = this.getBlock(x, y);
-        
+
         if (!block) continue;
         if (!this.isSolid(block)) continue;
 
-        const bounds = this.getBlockBounds(this.blockToWorldCoords(x, y));
-
-        collisions.push(
-          bounds
+        const collider = new Collider(
+          new Vector2(BLOCK_SIZE, BLOCK_SIZE),
+          new Vector2(),
         );
+        const transform = new Transform(
+          this.blockToWorldCoords(x, y),
+          new Vector2(BLOCK_SIZE, BLOCK_SIZE)
+        )
+
+        worldColliders.push({
+          collider,
+          transform,
+        });
       }
     }
 
-    return collisions;
+    return worldColliders;
   }
 }

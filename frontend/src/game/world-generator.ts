@@ -15,7 +15,7 @@ export default class WorldGenerator {
 
   getBiomeType(x: number, y: number): BIOME {
     const value = this.noise(x * 0.002, y * 0.002);
-    return value < -0.2 ? "DESERT" : "PLAINS";
+    return value < -0.4 ? "DESERT" : "PLAINS";
   }
 
   getSurfaceHeight(x: number): number {
@@ -44,7 +44,16 @@ export default class WorldGenerator {
 
     const value = medium * 0.4 + small * 0.6;
 
-    return value < -0.65;
+    return value < -0.68;
+  }
+
+  isCopper(x: number, y: number): boolean {
+    const medium = this.noise(x * 0.06, y * 0.06);
+    const small = this.noise(x * 0.12, y * 0.12);
+
+    const value = medium * 0.4 + small * 0.6;
+
+    return value > 0.75;
   }
 
   generateChunk(chunkX: number, chunkY: number): Chunk {
@@ -70,6 +79,7 @@ export default class WorldGenerator {
           }
           else if (blockY < surfaceHight - dirtLevel) {
             if (this.isCoal(chunkX * CHUNK_SIZE + x, chunkY * CHUNK_SIZE + y)) blockType = 4;
+            else if (this.isCopper(chunkX * CHUNK_SIZE + x, chunkY * CHUNK_SIZE + y)) blockType = 6;
             else blockType = 3;
           }
         }

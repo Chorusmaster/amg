@@ -28,5 +28,10 @@
     "name": "sand",
     "texture": "sand",
     "solid": true
+  },
+  {
+    "name": "copper",
+    "texture": "copper",
+    "solid": true
   }
 ]

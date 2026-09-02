@@ -40,10 +40,10 @@ export default class SandboxGame implements Game {
     this.blockRegistry = await BlockRegistry.create(assetManager);
     this.world = new World(this.blockRegistry.blocksRegistry);
 
-    this.physics = new Physics(this.world);
-
     this.player = new Player(assetManager, new Vector2(0, 100), this.camera, input, this.world);
-    this.physics.add(this.player.physicsBody);
+    this.world.add(this.player);
+
+    this.physics = new Physics(this.world);
 
     this.initialized = true;
   }

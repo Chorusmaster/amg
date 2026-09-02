@@ -12,74 +12,71 @@ import AABB from "../engine/physics/AABB";
 import { BLOCK_SIZE, SHOW_HITBOXES } from "./data/settings";
 
 export default class Player extends Entity {
-  readonly speed = 100;
-  readonly jumpForce = 300;
+  readonly speed = 200;
+  readonly jumpForce = 400;
   readonly interactionRange = 200;
 
-  private physicsBodyComponent: PhysicsBody;
   private camera;
   private assetManager: AssetManager;
   private input: Input;
-  private world: World;
 
   private worldMouseCoords: Vector2 = new Vector2();
   private blockMouseCoords: Vector2 = new Vector2();
+
+  private mainCollider: Collider;
 
   constructor(
     assetManager: AssetManager,
     spawnPos: Vector2,
     camera: Camera,
     input: Input,
-    world: World
+    world: World,
   ) {
     const playerImage = assetManager.getImage("player");
+    const transform = new Transform(spawnPos, new Vector2(92, 92));
 
-    super("Player", playerImage, new Transform(spawnPos, new Vector2(92, 92)));
+    const mainCollider = new Collider(new Vector2(30, 92));
 
+    super(
+      "Player",
+      playerImage,
+      transform,
+      new PhysicsBody(transform, [mainCollider], true, true),
+    );
+
+    this.mainCollider = mainCollider;
     this.assetManager = assetManager;
     this.camera = camera;
     this.input = input;
-    this.world = world
-    this.physicsBodyComponent = new PhysicsBody(
-      this.transform,
-      true,
-      new Collider(new Vector2(30, 92)),
-    );
+    this.world = world;
   }
 
-  get physicsBody() {
-    return this.physicsBodyComponent;
+  onTriggerEnter(_other: Entity) {
+    // Generic trigger handling is intentionally kept here; entity-specific logic belongs in subclasses.
   }
 
   private isGrounded(): boolean {
-    const bounds = this.physicsBody.collider!.getBounds(
-      this.transform
-    );
+    const bounds = this.mainCollider.getBounds(this.transform);
 
     const checkBounds = new AABB(
-      new Vector2(
-        bounds.min.x + 0.01,
-        bounds.min.y - 1
-      ),
-      new Vector2(
-        bounds.max.x - 0.01,
-        bounds.min.y
-      )
+      new Vector2(bounds.min.x + 0.02, bounds.min.y - 1),
+      new Vector2(bounds.max.x - 0.02, bounds.min.y),
     );
 
-    return this.world.getCollisions(checkBounds).length > 0;
+    return this.world.query(checkBounds).length > 0;
   }
 
   private selectionInteractable() {
-    return this.transform.position.distanceTo(this.worldMouseCoords) <= this.interactionRange;
+    return (
+      this.transform.position.distanceTo(this.worldMouseCoords) <=
+      this.interactionRange
+    );
   }
 
   private selectionInterferePlayer(): boolean {
     const blockBounds = this.world.getBlockBounds(this.worldMouseCoords);
 
-    const playerBounds = this.physicsBody.collider!.getBounds(
-      this.transform
-    );
+    const playerBounds = this.mainCollider.getBounds(this.transform);
 
     return (
       playerBounds.max.x > blockBounds.min.x &&
@@ -101,33 +98,36 @@ export default class Player extends Entity {
   }
 
   private selectionInterferesBlock(): boolean {
-    return !!this.world.getBlock(this.blockMouseCoords.x, this.blockMouseCoords.y);
+    return !!this.world.getBlock(
+      this.blockMouseCoords.x,
+      this.blockMouseCoords.y,
+    );
   }
 
-  update(dt: number) {
+  update(_dt: number) {
     let directionX = 0;
 
-    if (this.input.isKeyDown("KeyA"))
-      directionX -= 1;
+    if (this.input.isKeyDown("KeyA")) directionX -= 1;
 
-    if (this.input.isKeyDown("KeyD"))
-      directionX += 1;
+    if (this.input.isKeyDown("KeyD")) directionX += 1;
 
-    this.physicsBody.velocity.x = directionX * this.speed;
+    this.physicsBody!.velocity.x = directionX * this.speed;
 
     if (this.input.isKeyDown("Space") && this.isGrounded()) {
-      console.log("jumped");
-      this.physicsBody.velocity.y = this.jumpForce;
+      this.physicsBody!.velocity.y = this.jumpForce;
     }
 
     this.worldMouseCoords = this.camera.screenToWorld(this.input.mousePosition);
-    this.blockMouseCoords = this.world.worldToBlockCoords(this.worldMouseCoords);
+    this.blockMouseCoords = this.world.worldToBlockCoords(
+      this.worldMouseCoords,
+    );
 
     if (this.input.isMouseButtonDown(0)) {
-      if (!this.selectionInteractable())
-        return;
+      if (!this.selectionInteractable()) return;
 
-      const {x: blockX, y: blockY} = this.world.worldToBlockCoords(this.worldMouseCoords);
+      const { x: blockX, y: blockY } = this.world.worldToBlockCoords(
+        this.worldMouseCoords,
+      );
       this.world.setBlock(blockX, blockY, 0);
     }
 
@@ -136,7 +136,7 @@ export default class Player extends Entity {
       if (!this.selectionContactsWithBlocks()) return;
       if (this.selectionInterferePlayer()) return;
       if (this.selectionInterferesBlock()) return;
-        
+
       this.world.setBlock(this.blockMouseCoords.x, this.blockMouseCoords.y, 1);
     }
   }
@@ -148,27 +148,26 @@ export default class Player extends Entity {
       this.transform.position,
       this.transform.scale,
     );
-    
-    const selectionVisible = 
-      this.selectionInteractable() 
-      && (
-        this.selectionContactsWithBlocks() ||
-        this.selectionInterferesBlock()
-      )
-      && !this.selectionInterferePlayer();
+
+    const selectionVisible =
+      this.selectionInteractable() &&
+      (this.selectionContactsWithBlocks() || this.selectionInterferesBlock()) &&
+      !this.selectionInterferePlayer();
 
     if (selectionVisible) {
       renderer.drawWorldImage(
         this.assetManager.getImage("selection"),
         this.camera,
-        this.blockMouseCoords.multiply(BLOCK_SIZE).add(new Vector2(BLOCK_SIZE / 2, BLOCK_SIZE / 2)),
+        this.blockMouseCoords
+          .multiply(BLOCK_SIZE)
+          .add(new Vector2(BLOCK_SIZE / 2, BLOCK_SIZE / 2)),
         new Vector2(BLOCK_SIZE, BLOCK_SIZE),
       );
     }
 
     if (SHOW_HITBOXES) {
-      const collider = this.physicsBody.collider!;
-      const colliderSize = collider.getBounds(this.physicsBody.transform);
+      const collider = this.mainCollider;
+      const colliderSize = collider.getBounds(this.physicsBody!.transform);
       renderer.drawWorldImage(
         this.assetManager.getImage("hitbox"),
         this.camera,

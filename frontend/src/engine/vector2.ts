@@ -22,6 +22,10 @@ export default class Vector2 {
     return new Vector2(this.x * scalar, this.y * scalar);
   }
 
+  dot(v: Vector2) {
+    return this.x * v.x + this.y * v.y
+  }
+
   length(): number {
     return Math.sqrt(this.x ** 2 + this.y ** 2);
   }

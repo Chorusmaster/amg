@@ -1,37 +1,81 @@
 [
   {
+    "id": 0,
     "name": "air",
     "texture": null,
-    "solid": false
+    "solid": false,
+    "drops": []
   },
   {
+    "id": 1,
     "name": "dirt",
     "texture": "dirt",
-    "solid": true
+    "solid": true,
+    "drops": [
+      {
+        "item": "dirt",
+        "quantity": 1
+      }
+    ]
   },
   {
+    "id": 2,
     "name": "grass",
     "texture": "grass",
-    "solid": true
+    "solid": true,
+    "drops": [
+      {
+        "item": "grass",
+        "quantity": 1
+      }
+    ]
   },
   {
+    "id": 3,
     "name": "stone",
     "texture": "stone",
-    "solid": true
+    "solid": true,
+    "drops": [
+      {
+        "item": "stone",
+        "quantity": 1
+      }
+    ]
   },
   {
+    "id": 4,
     "name": "coal_ore",
     "texture": "coal_ore",
-    "solid": true
+    "solid": true,
+    "drops": [
+      {
+        "item": "coal",
+        "quantity": 1
+      }
+    ]
   },
   {
+    "id": 5,
     "name": "sand",
     "texture": "sand",
-    "solid": true
+    "solid": true,
+    "drops": [
+      {
+        "item": "sand",
+        "quantity": 1
+      }
+    ]
   },
   {
-    "name": "copper",
-    "texture": "copper",
-    "solid": true
+    "id": 6,
+    "name": "copper_ore",
+    "texture": "copper_ore",
+    "solid": true,
+    "drops": [
+      {
+        "item": "copper",
+        "quantity": 1
+      }
+    ]
   }
 ]

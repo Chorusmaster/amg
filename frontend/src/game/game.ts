@@ -8,18 +8,17 @@ import World from "./world";
 import BlockRegistry from "./block-registry";
 import Physics from "../engine/physics/physics";
 import Player from "./player";
+import GameContext from "./game-context";
+import ItemRegistry from "./item-registry";
 
 export default class SandboxGame implements Game {
   private initialized = false;
   private camera!: Camera;
   private physics!: Physics;
-  private blockRegistry!: BlockRegistry;
-  private assetManager!: AssetManager;
+  private context!: GameContext;
 
   private player!: Player;
   private world!: World;
-
-  private playerImage!: HTMLImageElement;
 
   readonly settings = {
     imageSmoothing: false
@@ -30,17 +29,28 @@ export default class SandboxGame implements Game {
     input: Input,
     viewportSize: Vector2,
   ) {
-    this.camera = new Camera(viewportSize);
-    this.assetManager = assetManager;
-
     assetManager.loadImage("player", "/assets/horus_2_0.png");
     assetManager.loadImage("hitbox", "/assets/hitbox.png");
     assetManager.loadImage("selection", "/assets/selection.png");
+    assetManager.loadImage("inventory_slot", "/assets/inventory_slot.png");
+    assetManager.loadImage("inventory_slot_selected", "/assets/inventory_slot_selected.png");
 
-    this.blockRegistry = await BlockRegistry.create(assetManager);
-    this.world = new World(this.blockRegistry.blocksRegistry);
+    this.camera = new Camera(viewportSize);
+    
+    const blockRegistry = await BlockRegistry.create(assetManager);
+    const itemRegistry = await ItemRegistry.create(assetManager, blockRegistry);
+    
+    this.context = new GameContext(
+      input,
+      assetManager,
+      blockRegistry,
+      itemRegistry,
+      this.camera.viewport
+    );
 
-    this.player = new Player(assetManager, new Vector2(0, 100), this.camera, input, this.world);
+    this.world = new World(this.context);
+
+    this.player = new Player(this.context, new Vector2(0, 100), this.camera, this.world);
     this.world.add(this.player);
 
     this.physics = new Physics(this.world);

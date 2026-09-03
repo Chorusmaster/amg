@@ -2,13 +2,12 @@ import type Camera from "../engine/camera";
 import Entity from "../engine/entity";
 import type Renderer from "../engine/renderer";
 import Vector2 from "../engine/vector2";
-import Block from "./block";
 import Chunk from "./chunk";
 import WorldGenerator from "./world-generator";
 import type CollisionWorld from "../engine/physics/collision-world";
 import AABB from "../engine/physics/AABB";
-import Item from "./item";
 import type WorldCollider from "../engine/physics/world-collider";
+import ItemStack from "./item-stack";
 
 import {
   BLOCK_SIZE,
@@ -18,20 +17,28 @@ import {
 } from "./data/settings";
 import Collider from "../engine/physics/collider";
 import Transform from "../engine/transform";
+import GameContext from "./game-context";
+import type AssetManager from "../engine/asset-manager";
+import type BlockRegistry from "./block-registry";
+import type ItemRegistry from "./item-registry";
 
 export default class World implements CollisionWorld {
   private entities: Entity[] = [];
   private chunks = new Map<string, Chunk>();
-  private blocksRegistryList: Block[];
+  private blockRegistry: BlockRegistry;
+  private itemRegistry: ItemRegistry;
   private worldGenerater: WorldGenerator;
+  private assetManager: AssetManager;
   readonly seed: string;
   readonly gravityAcceleration = 500;
 
-  constructor(blocksRegistryList: Block[], seed?: string) {
+  constructor(gameContext: GameContext, seed?: string) {
     if (!seed) seed = Math.random().toString();
     this.seed = seed;
 
-    this.blocksRegistryList = blocksRegistryList;
+    this.assetManager = gameContext.assetManager;
+    this.blockRegistry = gameContext.blockRegistry;
+    this.itemRegistry = gameContext.itemRegistry;
     this.worldGenerater = new WorldGenerator(this.seed);
   }
 
@@ -81,14 +88,6 @@ export default class World implements CollisionWorld {
 
   // BLOCKS
 
-  isSolid(blockId: number) {
-    return this.blocksRegistryList[blockId].solid;
-  }
-
-  getBlockData(blockId: number) {
-    return this.blocksRegistryList[blockId];
-  }
-
   getBlock(x: number, y: number) {
     const chunkX = this.worldToChunkCoord(x);
     const chunkY = this.worldToChunkCoord(y);
@@ -107,24 +106,34 @@ export default class World implements CollisionWorld {
     const chunkY = this.worldToChunkCoord(y);
 
     const chunk = this.chunks.get(`${chunkX},${chunkY}`);
-    if (!chunk) return undefined;
+    if (!chunk) return;
 
     const localX = this.worldToLocalCoord(x);
     const localY = this.worldToLocalCoord(y);
 
     if (block == 0) {
-      const oldBlock = this.getBlockData(this.getBlock(x, y)!);
-      if (oldBlock.id != 0) {
-        const item = new Item(
-          oldBlock.name,
-          oldBlock.texture!,
+      const oldBlockId = this.getBlock(x, y);
+      if (!oldBlockId) return;
+
+      const oldBlock = this.blockRegistry.getByIdOrThrow(oldBlockId);
+      const drops = oldBlock.drops;
+
+      if (drops.length > 0) {
+        const texture = this.itemRegistry.getByNameOrThrow(drops[0].item).texture;
+
+        const itemStack = new ItemStack(
+          drops,
+          this.assetManager.getImage(texture),
           new Vector2(
             x * BLOCK_SIZE + BLOCK_SIZE * 0.5,
             y * BLOCK_SIZE + BLOCK_SIZE * 0.5,
           ),
         );
-        this.add(item);
+        this.add(itemStack);
       }
+    }
+    else if (this.getBlock(x, y - 1) === this.blockRegistry.getByNameOrThrow("grass").id) {
+      this.setBlock(x, y - 1, this.blockRegistry.getByNameOrThrow("dirt").id);
     }
 
     chunk.set(localX, localY, block);
@@ -175,7 +184,7 @@ export default class World implements CollisionWorld {
 
     for (let y = 0; y < CHUNK_SIZE; y++) {
       for (let x = 0; x < CHUNK_SIZE; x++) {
-        const texture = this.blocksRegistryList[chunk.get(x, y)].texture;
+        const texture = this.blockRegistry.getByIdOrThrow(chunk.get(x, y)).texture;
         if (!texture) continue;
 
         const position = this.blockToWorldCoords(
@@ -184,7 +193,7 @@ export default class World implements CollisionWorld {
         );
 
         renderer.drawWorldImage(
-          texture,
+          this.assetManager.getImage(texture),
           camera,
           position,
           new Vector2(BLOCK_SIZE, BLOCK_SIZE),
@@ -255,7 +264,7 @@ export default class World implements CollisionWorld {
         const block = this.getBlock(x, y);
 
         if (!block) continue;
-        if (!this.isSolid(block)) continue;
+        if (!this.blockRegistry.getById(block)?.solid) continue;
 
         const collider = new Collider(
           new Vector2(BLOCK_SIZE, BLOCK_SIZE),

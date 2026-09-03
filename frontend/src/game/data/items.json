@@ -1,0 +1,42 @@
+[
+  {
+    "id": 0,
+    "name": "dirt",
+    "type": "block",
+    "block": "dirt",
+    "texture": "dirt"
+  },
+  {
+    "id": 1,
+    "name": "grass",
+    "type": "block",
+    "block": "grass",
+    "texture": "grass"
+  },
+  {
+    "id": 2,
+    "name": "stone",
+    "type": "block",
+    "block": "stone",
+    "texture": "stone"
+  },
+  {
+    "id": 3,
+    "name": "coal",
+    "type": "item",
+    "texture": "coal"
+  },
+  {
+    "id": 4,
+    "name": "sand",
+    "type": "block",
+    "block": "sand",
+    "texture": "sand"
+  },
+  {
+    "id": 5,
+    "name": "copper",
+    "type": "item",
+    "texture": "copper"
+  }
+]

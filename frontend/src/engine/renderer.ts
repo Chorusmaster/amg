@@ -49,4 +49,17 @@ export default class Renderer {
       screenSize
     );
   }
+
+  public drawText(
+    text: string,
+    position: Vector2,
+    color: string = "#fff",
+    font: string = "16px Arial"
+  ) {
+    this.ctx.font = font;
+    this.ctx.fillStyle = color;
+    this.ctx.textAlign = "right";
+    this.ctx.textBaseline = "bottom";
+    this.ctx.fillText(text, position.x, position.y);
+  }
 }

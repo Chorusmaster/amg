@@ -5,15 +5,22 @@ import Vector2 from "../engine/vector2";
 import Collider from "../engine/physics/collider";
 import { ITEM_SIZE, ITEM_DESPAWN_TIME } from "./data/settings";
 
-export default class Item extends Entity {
-  constructor(name: string, image: HTMLImageElement, position: Vector2) {
+export type ItemEntry = {
+  item: string,
+  quantity: number
+}
+
+export default class ItemStack extends Entity {
+  readonly items = new Map<string, number>();
+
+  constructor(items: ItemEntry[], image: HTMLImageElement, position: Vector2) {
     const transform = new Transform(
       position,
       new Vector2(ITEM_SIZE, ITEM_SIZE),
     );
 
     super(
-      name,
+      "Item_stack",
       image,
       transform,
       new PhysicsBody(
@@ -28,6 +35,10 @@ export default class Item extends Entity {
         true
       ),
     );
+
+    for (const item of items) {
+      this.items.set(item.item, item.quantity);
+    }
   }
 
   onAddedToWorld() {
@@ -37,8 +48,18 @@ export default class Item extends Entity {
   }
 
   onTriggerEnter(other: Entity) {
-    if (other.name === "Player" && this.world) {
-      this.world.remove(this);
+    if (other instanceof ItemStack && this.world) {
+      if (this.items.size === 0 ) return;
+
+      for (const [key, quantity] of other.items) {
+        this.items.set(
+          key,
+          (this.items.get(key) ?? 0) + quantity
+        );
+      }
+
+      other.items.clear();
+      this.world.remove(other);
     }
   }
 }

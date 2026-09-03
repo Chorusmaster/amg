@@ -18,6 +18,10 @@ export default class Vector2 {
     return new Vector2(this.x - v.x, this.y - v.y);
   }
 
+  addScalar(scalar: number): Vector2 {
+    return new Vector2(this.x + scalar, this.y + scalar);
+  }
+
   multiply(scalar: number): Vector2 {
     return new Vector2(this.x * scalar, this.y * scalar);
   }

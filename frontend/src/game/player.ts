@@ -10,6 +10,11 @@ import type World from "./world";
 import type AssetManager from "../engine/asset-manager";
 import AABB from "../engine/physics/AABB";
 import { BLOCK_SIZE, SHOW_HITBOXES } from "./data/settings";
+import type GameContext from "./game-context";
+import Inventory from "./inventory/inventory";
+import ItemStack from "./item-stack";
+import type ItemRegistry from "./item-registry";
+import type BlockRegistry from "./block-registry";
 
 export default class Player extends Entity {
   readonly speed = 200;
@@ -18,7 +23,11 @@ export default class Player extends Entity {
 
   private camera;
   private assetManager: AssetManager;
+  private blockRegistry: BlockRegistry;
+  private itemRegistry: ItemRegistry;
   private input: Input;
+
+  private inventory: Inventory;
 
   private worldMouseCoords: Vector2 = new Vector2();
   private blockMouseCoords: Vector2 = new Vector2();
@@ -26,13 +35,12 @@ export default class Player extends Entity {
   private mainCollider: Collider;
 
   constructor(
-    assetManager: AssetManager,
+    gameContext: GameContext,
     spawnPos: Vector2,
     camera: Camera,
-    input: Input,
     world: World,
   ) {
-    const playerImage = assetManager.getImage("player");
+    const playerImage = gameContext.assetManager.getImage("player");
     const transform = new Transform(spawnPos, new Vector2(92, 92));
 
     const mainCollider = new Collider(new Vector2(30, 92));
@@ -45,14 +53,31 @@ export default class Player extends Entity {
     );
 
     this.mainCollider = mainCollider;
-    this.assetManager = assetManager;
+    this.assetManager = gameContext.assetManager;
+    this.blockRegistry = gameContext.blockRegistry;
+    this.itemRegistry = gameContext.itemRegistry;
     this.camera = camera;
-    this.input = input;
+    this.input = gameContext.input;
     this.world = world;
+    this.inventory = new Inventory(gameContext);
   }
 
-  onTriggerEnter(_other: Entity) {
-    // Generic trigger handling is intentionally kept here; entity-specific logic belongs in subclasses.
+  onTriggerEnter(other: Entity) {
+    let itemsRemaining = false;
+
+    if (other instanceof ItemStack) {
+      other.items.forEach((value, key) => {
+        const remaining = this.inventory.add({item: key, quantity: value});
+        if (remaining) {
+          itemsRemaining = true;
+          other.items.set(key, remaining.quantity);
+        } 
+      });
+    }
+
+    if(!itemsRemaining) {
+      this.world.remove(other);
+    }
   }
 
   private isGrounded(): boolean {
@@ -122,13 +147,35 @@ export default class Player extends Entity {
       this.worldMouseCoords,
     );
 
-    if (this.input.isMouseButtonDown(0)) {
-      if (!this.selectionInteractable()) return;
+    if (this.input.isMouseButtonPressed(0)) {
+      const held = this.inventory.heldItem;
+      const slotId = this.inventory.getSlotIdByClickPos(this.input.mousePosition);
+      if (slotId === null) {
+        if (held) {
+          this.inventory.takeOutside();
+          const throwDirection = (this.input.mousePosition.x > this.camera.viewport.x / 2) ? 1 : -1;
+          const stack = new ItemStack(
+            [held], 
+            this.assetManager.getImage(this.itemRegistry.getByNameOrThrow(held.item).texture),
+            new Vector2(this.transform.position.x + (50 * throwDirection), this.transform.position.y + 50),
+          )
+          this.world.add(stack);
+        } else {
+          if (!this.selectionInteractable()) return;
 
-      const { x: blockX, y: blockY } = this.world.worldToBlockCoords(
-        this.worldMouseCoords,
-      );
-      this.world.setBlock(blockX, blockY, 0);
+          const { x: blockX, y: blockY } = this.world.worldToBlockCoords(
+            this.worldMouseCoords,
+          );
+          this.world.setBlock(blockX, blockY, 0);
+        }
+      } else {
+        const held = this.inventory.heldItem;
+        if (!held) {
+          this.inventory.take(slotId);
+        } else {
+          this.inventory.place(slotId);
+        }
+      }
     }
 
     if (this.input.isMouseButtonDown(2)) {
@@ -137,7 +184,25 @@ export default class Player extends Entity {
       if (this.selectionInterferePlayer()) return;
       if (this.selectionInterferesBlock()) return;
 
-      this.world.setBlock(this.blockMouseCoords.x, this.blockMouseCoords.y, 1);
+      const activeSlot = this.inventory.activeSlot;
+      const activeSlotData = this.inventory.slots[activeSlot];
+
+      if (activeSlotData && activeSlotData.quantity > 0)  {
+        const item = this.itemRegistry.getByNameOrThrow(activeSlotData.item);
+        if (item.block) {
+          const blockId = this.blockRegistry.getByNameOrThrow(item.block).id;
+          this.world.setBlock(this.blockMouseCoords.x, this.blockMouseCoords.y, blockId);
+          this.inventory.removeQuantity(activeSlot, 1);
+        }
+      }
+    }
+
+    const wheelDelta = this.input.consumeWheelDelta();
+    if (wheelDelta > 0) {
+      this.inventory.selectNext();
+    }
+    else if (wheelDelta < 0) {
+      this.inventory.selectPrevious();
     }
   }
 
@@ -175,5 +240,7 @@ export default class Player extends Entity {
         new Vector2(colliderSize.width, colliderSize.height),
       );
     }
+
+    this.inventory.render(renderer);
   }
 }

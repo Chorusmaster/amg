@@ -29,7 +29,7 @@ export default class SandboxGame implements Game {
     input: Input,
     viewportSize: Vector2,
   ) {
-    assetManager.loadImage("player", "/assets/horus_2_0.png");
+    assetManager.loadImage("player", "/assets/player_spritesheet.png");
     assetManager.loadImage("hitbox", "/assets/hitbox.png");
     assetManager.loadImage("selection", "/assets/selection.png");
     assetManager.loadImage("inventory_slot", "/assets/inventory_slot.png");

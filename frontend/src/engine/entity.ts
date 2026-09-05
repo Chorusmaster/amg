@@ -38,11 +38,15 @@ export default class Entity {
   
   onTriggerEnter(_other: Entity) {}
 
+  update(dt: number) {
+    this.sprite?.update(dt);
+  }
+
   render(renderer: Renderer, camera: Camera) {
     if (!this.world) throw new Error("Entity should be added to world first to be rendered");
 
-    renderer.drawWorldImage(
-      this.sprite!.image,
+    renderer.drawWorldSprite(
+      this.sprite!,
       camera,
       this.transform.position,
       this.transform.scale,

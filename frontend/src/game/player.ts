@@ -16,6 +16,8 @@ import ItemStack from "./item-stack";
 import type ItemRegistry from "./item-registry";
 import type BlockRegistry from "./block-registry";
 import Sprite from "../engine/sprite";
+import SpriteSheet from "../engine/spritesheet";
+import Animation from "../engine/animation";
 
 export default class Player extends Entity {
   readonly speed = 200;
@@ -35,6 +37,8 @@ export default class Player extends Entity {
 
   private mainCollider: Collider;
 
+  private animations = new Map<string, Animation>();
+
   constructor(
     gameContext: GameContext,
     spawnPos: Vector2,
@@ -42,11 +46,28 @@ export default class Player extends Entity {
     world: World,
   ) {
     const playerImage = gameContext.assetManager.getImage("player");
-    const transform = new Transform(spawnPos, new Vector2(92, 92));
+    const playerSpritesheet = new SpriteSheet(playerImage, 64, 64);
+    const playerSprite = new Sprite(
+      playerSpritesheet.image,
+      playerSpritesheet.getFrame(0)
+    );
 
-    const mainCollider = new Collider(new Vector2(30, 92));
+    const idleAnimation = new Animation(
+      [playerSpritesheet.getFrame(0)],
+      10
+    );
+    const walkAnimation = new Animation(
+      [
+        playerSpritesheet.getFrame(0),
+        playerSpritesheet.getFrame(1),
+        playerSpritesheet.getFrame(2),
+        playerSpritesheet.getFrame(3),
+      ],
+      0.12
+    );
 
-    const playerSprite = new Sprite(playerImage);
+    const transform = new Transform(spawnPos, new Vector2(128, 128));
+    const mainCollider = new Collider(new Vector2(60, 122));
 
     super(
       "Player",
@@ -54,6 +75,10 @@ export default class Player extends Entity {
       transform,
       new PhysicsBody(transform, [mainCollider], true, true),
     );
+
+    this.animations.set("idle", idleAnimation);
+    this.animations.set("walk", walkAnimation);
+    this.sprite!.animation = idleAnimation;
 
     this.mainCollider = mainCollider;
     this.assetManager = gameContext.assetManager;
@@ -63,6 +88,12 @@ export default class Player extends Entity {
     this.input = gameContext.input;
     this.world = world;
     this.inventory = gameContext.inventory;
+  }
+
+  private getAnimationOrThrow(name: string) {
+    const animation = this.animations.get(name);
+    if (!animation) throw new Error(`Animation ${name} doesn't exist`);
+    return animation;
   }
 
   onTriggerEnter(other: Entity) {
@@ -132,14 +163,30 @@ export default class Player extends Entity {
     );
   }
 
-  update(_dt: number) {
+  update(dt: number) {
+    super.update(dt);
     let directionX = 0;
 
-    if (this.input.isKeyDown("KeyA")) directionX -= 1;
+    if (this.input.isKeyDown("KeyA")) {
+      directionX -= 1;
+      this.sprite!.flipX = true;
+      this.sprite!.play(this.getAnimationOrThrow("walk"));
+    }
 
-    if (this.input.isKeyDown("KeyD")) directionX += 1;
+    if (this.input.isKeyDown("KeyD")) {
+      directionX += 1;
+      this.sprite!.flipX = false;
+      this.sprite!.play(this.getAnimationOrThrow("walk"));
+    }
+
+    if ((!this.input.isKeyDown("KeyA") && !this.input.isKeyDown("KeyD"))) {
+      this.sprite!.play(this.getAnimationOrThrow("idle"));
+    }
 
     this.physicsBody!.velocity.x = directionX * this.speed;
+    if (this.physicsBody!.velocity.y !== 0) {
+      this.sprite!.play(this.getAnimationOrThrow("idle"));
+    }
 
     if (this.input.isKeyDown("Space") && this.isGrounded()) {
       this.physicsBody!.velocity.y = this.jumpForce;
@@ -150,7 +197,7 @@ export default class Player extends Entity {
       this.worldMouseCoords,
     );
 
-    if (this.input.isMouseButtonPressed(0)) {
+    if (this.input.isMouseButtonDown(0)) {
       const held = this.inventory.heldItem;
       if (held) {
         this.inventory.takeOutside();

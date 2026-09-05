@@ -1,4 +1,5 @@
 import Camera from "./camera";
+import type Sprite from "./sprite";
 import Vector2 from "./vector2";
 
 export default class Renderer {
@@ -32,6 +33,57 @@ export default class Renderer {
     size: Vector2
   ) {
     this.ctx.drawImage(image, position.x, position.y, size.x, size.y);
+  }
+
+  drawWorldSprite(
+    sprite: Sprite,
+    camera: Camera,
+    position: Vector2,
+    size: Vector2,
+    tint?: string
+  ) {
+    const screenSize = size.multiply(camera.zoom);
+
+    const screenPosition = camera.worldToScreen(position)
+      .subtract(screenSize.multiply(0.5));
+
+    const ctx = this.ctx;
+
+    ctx.save();
+
+    ctx.translate(
+      screenPosition.x + screenSize.x / 2,
+      screenPosition.y + screenSize.y / 2
+    );
+
+    ctx.scale(
+      sprite.flipX ? -1 : 1,
+      sprite.flipY ? -1 : 1
+    );
+
+    if (sprite.frame) {
+      ctx.drawImage(
+        sprite.image,
+        sprite.frame.x,
+        sprite.frame.y,
+        sprite.frame.width,
+        sprite.frame.height,
+        -screenSize.x / 2,
+        -screenSize.y / 2,
+        screenSize.x,
+        screenSize.y
+      );
+    } else {
+      ctx.drawImage(
+        sprite.image,
+        -screenSize.x / 2,
+        -screenSize.y / 2,
+        screenSize.x,
+        screenSize.y
+      );
+    }
+
+    ctx.restore();
   }
 
   drawWorldImage(

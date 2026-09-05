@@ -92,8 +92,6 @@ export default class WorldGenerator {
       }
     }
 
-    this.world.lightSystem.setupChunkSunlight(chunk, chunkX, chunkY);
-
     return chunk;
   }
 }

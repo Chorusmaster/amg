@@ -8,6 +8,7 @@ import type CollisionWorld from "../engine/physics/collision-world";
 import AABB from "../engine/physics/AABB";
 import type WorldCollider from "../engine/physics/world-collider";
 import ItemStack from "./item-stack";
+import type { LightNode } from "./light-system";
 
 import {
   BLOCK_SIZE,
@@ -37,6 +38,8 @@ export default class World implements CollisionWorld {
   readonly gameContext: GameContext;
   readonly seed: string;
   readonly gravityAcceleration = 500;
+
+  private lightQueues: LightNode[][] = [];
 
   constructor(gameContext: GameContext, seed?: string) {
     if (!seed) seed = Math.random().toString();
@@ -119,8 +122,9 @@ export default class World implements CollisionWorld {
     const localX = this.worldToLocalCoord(x);
     const localY = this.worldToLocalCoord(y);
 
+    const oldBlockId = this.getBlock(x, y);
+
     if (block == 0) {
-      const oldBlockId = this.getBlock(x, y);
       if (!oldBlockId) return;
 
       const oldBlock = this.blockRegistry.getByIdOrThrow(oldBlockId);
@@ -148,10 +152,10 @@ export default class World implements CollisionWorld {
     
     const light = this.getLight(x, y + 1);
 
-    this.lightSystem.spreadSunlight(
+    if (oldBlockId === undefined) return;
+    this.lightSystem.onBlockChanged(
       x,
-      y + 1,
-      light,
+      y,
     );
   }
 
@@ -192,6 +196,8 @@ export default class World implements CollisionWorld {
   generateChunk(chunkX: number, chunkY: number) {
     const chunk = this.worldGenerator.generateChunk(chunkX, chunkY);
     this.chunks.set(`${chunkX},${chunkY}`, chunk);
+    const queue = this.lightSystem.setupChunkSunlight(chunkX, chunkY);
+    this.lightQueues.push(queue);
     return chunk;
   }
 
@@ -216,6 +222,13 @@ export default class World implements CollisionWorld {
         if (!this.chunks.has(`${chunkX},${chunkY}`)) {
           this.generateChunk(chunkX, chunkY);
         }
+      }
+    }
+
+    while(this.lightQueues.length > 0) {
+      const lightQueue = this.lightQueues.pop()!;
+      for (const lightNode of lightQueue) {
+        this.lightSystem.spreadSunlight(lightNode.x, lightNode.y, lightNode.light);
       }
     }
   }
@@ -245,7 +258,7 @@ export default class World implements CollisionWorld {
             position,
             new Vector2(BLOCK_SIZE, BLOCK_SIZE),
             tint
-        );
+          );
           continue;
         }
 

@@ -19,7 +19,7 @@
         "quantity": 1
       }
     ],
-    "lightOpacity": 4,
+    "lightOpacity": 25,
     "emission": 0
   },
   {
@@ -33,7 +33,7 @@
         "quantity": 1
       }
     ],
-    "lightOpacity": 4,
+    "lightOpacity": 25,
     "emission": 0
   },
   {
@@ -47,7 +47,7 @@
         "quantity": 1
       }
     ],
-    "lightOpacity": 4,
+    "lightOpacity": 25,
     "emission": 0
   },
   {
@@ -61,7 +61,7 @@
         "quantity": 1
       }
     ],
-    "lightOpacity": 4,
+    "lightOpacity": 25,
     "emission": 0
   },
   {
@@ -75,7 +75,7 @@
         "quantity": 1
       }
     ],
-    "lightOpacity": 4,
+    "lightOpacity": 25,
     "emission": 0
   },
   {
@@ -89,7 +89,7 @@
         "quantity": 1
       }
     ],
-    "lightOpacity": 4,
+    "lightOpacity": 0,
     "emission": 14
   }
 ]

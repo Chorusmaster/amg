@@ -151,11 +151,7 @@ export default class World implements CollisionWorld {
     }
 
     chunk.setForeground(localX, localY, block);
-    this.lightSystem.propagateVerticalSkyLight(chunkX * CHUNK_SIZE + localX);
-    
-    const light = this.getLight(x, y + 1);
-
-    if (oldBlockId === undefined) return;
+    this.lightSystem.onBlockChanged();
   }
 
   // LIGHT
@@ -212,8 +208,16 @@ export default class World implements CollisionWorld {
   generateChunk(chunkX: number, chunkY: number) {
     const chunk = this.worldGenerator.generateChunk(chunkX, chunkY);
     this.chunks.set(`${chunkX},${chunkY}`, chunk); 
+    this.lightSystem.onChunkLoaded();
 
     return chunk;
+  }
+
+  getLoadedChunkCoordinates(): Array<[number, number]> {
+    return Array.from(this.chunks.keys(), key => {
+      const [chunkX, chunkY] = key.split(",");
+      return [Number(chunkX), Number(chunkY)];
+    });
   }
 
   // RENDER
@@ -236,9 +240,6 @@ export default class World implements CollisionWorld {
 
         if (!this.chunks.has(`${chunkX},${chunkY}`)) {
           this.generateChunk(chunkX, chunkY);
-          for (let localX = 0; localX < CHUNK_SIZE; localX++) {
-            this.lightSystem.propagateVerticalSkyLight(chunkX * CHUNK_SIZE + localX);
-          }
         }
       }
     }
@@ -327,16 +328,6 @@ export default class World implements CollisionWorld {
         }
       }
 
-      const chunkX = cameraChunkX + x;
-
-      for (let localX = 0; localX < CHUNK_SIZE; localX++) {
-        const blockX = localX + chunkX * CHUNK_SIZE;
-
-        if (!this.lightSystem.generatedX.has(blockX)) {
-          this.lightSystem.propagateVerticalSkyLight(blockX);
-          this.lightSystem.processPendingWaves();
-        }
-      }
     }
 
     for (const entity of this.entities) {

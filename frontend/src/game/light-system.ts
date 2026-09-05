@@ -1,201 +1,112 @@
-import Vector2 from "../engine/vector2";
 import type World from "./world";
 import { CHUNK_SIZE, MAX_LIGHT } from "./data/settings";
 
+type LightNode = {
+  x: number;
+  y: number;
+  light: number;
+};
+
 export default class LightSystem {
   private readonly world: World;
-  readonly generatedX = new Set<number>();
-  private pendingWaves: LightWave[] = [];
 
   constructor(world: World) {
     this.world = world;
   }
 
-  update(): void {
-    
+  onChunkLoaded(): void {
+    this.recalculateSunlight();
   }
 
-  setBlock(): void {
-
+  onBlockChanged(): void {
+    this.recalculateSunlight();
   }
 
-  recalculateSunlight(): void{
+  recalculateSunlight(): void {
+    const loadedChunks = this.world.getLoadedChunkCoordinates();
+    if (loadedChunks.length === 0) return;
 
-  }
+    this.clearLoadedLight(loadedChunks);
 
-  propagateLight(): void {
+    const queue: LightNode[] = [];
+    const minY =
+      Math.min(...loadedChunks.map(([, chunkY]) => chunkY)) * CHUNK_SIZE;
+    const maxY =
+      (Math.max(...loadedChunks.map(([, chunkY]) => chunkY)) + 1) * CHUNK_SIZE -
+      1;
 
-  }
+    const loadedChunkXs = new Set(loadedChunks.map(([chunkX]) => chunkX));
 
-  propagateVerticalSkyLight(x: number): void {
-    const surfaceY = this.world.surfaceY.get(x);
-    if (surfaceY === undefined) return;
+    for (const chunkX of loadedChunkXs) {
+      const minX = chunkX * CHUNK_SIZE;
+      const maxX = minX + CHUNK_SIZE - 1;
 
-    let topY = surfaceY;
+      for (let x = minX; x <= maxX; x++) {
+        let incomingLight = MAX_LIGHT;
 
-    while (this.world.getBlock(x, topY + 1) !== undefined) {
-      topY++;
-    }
+        for (let y = maxY; y >= minY; y--) {
+          const blockId = this.world.getBlock(x, y);
 
-    const topBlockId = this.world.getBlock(x, topY);
-    if (topBlockId === undefined) return;
+          if (blockId === undefined) {
+            incomingLight = MAX_LIGHT;
+            continue;
+          }
 
-    const topBlock = this.world.gameContext.blockRegistry
-      .getByIdOrThrow(topBlockId);
+          if (incomingLight > 0) {
+            this.world.setSkyLight(x, y, incomingLight);
+            queue.push({ x, y, light: incomingLight });
+          }
 
-    if (topY <= surfaceY || topBlock.solid) {
-      let y = surfaceY;
-
-      while (this.world.getBlock(x, y) !== undefined) {
-        this.world.setSkyLight(x, y, 0);
-        y--;
-      }
-
-      return;
-    }
-
-    let y = topY;
-    let firstSolidBlockY = undefined;
-
-    while (true) {
-      const blockId = this.world.getBlock(x, y);
-      if (blockId === undefined) break;
-
-      this.world.setSkyLight(x, y, MAX_LIGHT);
-
-      const block = this.world.gameContext.blockRegistry
-        .getByIdOrThrow(blockId);
-
-      if (block.solid) {
-        firstSolidBlockY = y;
-
-        while (true) {
-          const shadowBlock = this.world.getBlock(x, y);
-          if (shadowBlock === undefined) break;
-
-          this.world.setSkyLight(x, y, 0);
-          y--;
+          incomingLight = Math.max(
+            0,
+            incomingLight - this.getBlockOpacity(blockId),
+          );
         }
-
-        break;
       }
-
-      y--;
     }
 
-    if (firstSolidBlockY !== undefined) {
-      this.startLightWave({
-        x,
-        y: firstSolidBlockY,
-        direction: "down",
-        light: MAX_LIGHT
-      });
+    this.propagateAcrossLoadedChunks(queue);
+  }
 
-      this.generatedX.add(x);
+  private clearLoadedLight(loadedChunks: Array<[number, number]>): void {
+    for (const [chunkX, chunkY] of loadedChunks) {
+      for (let localY = 0; localY < CHUNK_SIZE; localY++) {
+        for (let localX = 0; localX < CHUNK_SIZE; localX++) {
+          this.world.setSkyLight(
+            chunkX * CHUNK_SIZE + localX,
+            chunkY * CHUNK_SIZE + localY,
+            0,
+          );
+        }
+      }
     }
   }
 
-  startLightWave(initialWave: LightWave): void {
-    const queue: LightWave[] = [initialWave];
+  private propagateAcrossLoadedChunks(queue: LightNode[]): void {
+    for (let index = 0; index < queue.length; index++) {
+      const node = queue[index];
+      const neighbors = [
+        [node.x + 1, node.y],
+        [node.x - 1, node.y],
+        [node.x, node.y + 1],
+        [node.x, node.y - 1],
+      ] as const;
 
-    while (queue.length > 0) {
-      const wave = queue.shift()!;
+      for (const [x, y] of neighbors) {
+        const blockId = this.world.getBlock(x, y);
+        if (blockId === undefined) continue;
 
-      const currentLight = this.world.getSkyLight(wave.x, wave.y);
+        const light = Math.max(0, node.light - this.getBlockOpacity(blockId));
+        if (light <= (this.world.getSkyLight(x, y) ?? 0)) continue;
 
-      if (currentLight === undefined) {
-        this.pendingWaves.push(wave);
-        continue;
+        this.world.setSkyLight(x, y, light);
+        queue.push({ x, y, light });
       }
-      if (currentLight >= wave.light) continue;
-
-      this.world.setSkyLight(wave.x, wave.y, wave.light);
-
-      const blockId = this.world.getBlock(wave.x, wave.y);
-      if (blockId === undefined) {
-        this.pendingWaves.push(wave);
-        continue;
-      }
-
-      const block = this.world.gameContext.blockRegistry
-        .getByIdOrThrow(blockId);
-
-      const newLight = wave.light - block.lightOpacity;
-
-      if (newLight <= 0) continue;
-
-      const directions = WAVE_DIRECTIONS[wave.direction];
-
-      queue.push(
-        this.newWaveFromDirection(wave, newLight, directions.firstCheck),
-        this.newWaveFromDirection(wave, newLight, directions.secondCheck),
-        this.newWaveFromDirection(wave, newLight, directions.thirdCheck)
-      );
     }
   }
 
-  newWaveFromDirection(oldWave: LightWave, light: number, direction: Direction): LightWave {
-    const vector = CHECK_DIRECTIONS[direction];
-
-    return {
-      x: oldWave.x + vector.x,
-      y: oldWave.y + vector.y,
-      light: light,
-      direction
-    };
-  }
-
-  processPendingWaves(): void {
-    const waves = this.pendingWaves;
-
-    this.pendingWaves = [];
-
-    for (const wave of waves) {
-      this.startLightWave(wave);
-    }
+  private getBlockOpacity(blockId: number): number {
+    const block = this.world.gameContext.blockRegistry.getByIdOrThrow(blockId);
+    return block.solid ? block.lightOpacity : 0;
   }
 }
-
-export type LightWave = {
-  x: number;
-  y: number;
-  direction: Direction;
-  light: number;
-};
-
-const CHECK_DIRECTIONS = {
-  right: new Vector2(1, 0),
-  left: new Vector2(-1, 0),
-  up: new Vector2(0, 1),
-  down: new Vector2(0, -1),
-} as const;
-
-type Direction = keyof typeof WAVE_DIRECTIONS;
-
-const WAVE_DIRECTIONS = {
-  right: {
-    firstCheck: "up",
-    secondCheck: "right",
-    thirdCheck: "down"
-  },
-  left: {
-    firstCheck: "up",
-    secondCheck: "left",
-    thirdCheck: "down"
-  },
-  up: {
-    firstCheck: "right",
-    secondCheck: "up",
-    thirdCheck: "left"
-  },
-  down: {
-    firstCheck: "right",
-    secondCheck: "down",
-    thirdCheck: "left"
-  }
-} as const;
-
-type Neighbor = {
-  position: Vector2;
-  direction: Vector2;
-};

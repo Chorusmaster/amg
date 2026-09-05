@@ -43,12 +43,17 @@ export default class LightSystem {
 
       for (let x = minX; x <= maxX; x++) {
         let incomingLight = MAX_LIGHT;
+        const surfaceY = this.world.surfaceY.get(x);
 
         for (let y = maxY; y >= minY; y--) {
           const blockId = this.world.getBlock(x, y);
 
           if (blockId === undefined) {
-            incomingLight = MAX_LIGHT;
+            if (!surfaceY || y < surfaceY) {
+              incomingLight = 0;
+            } else {
+              incomingLight = MAX_LIGHT;
+            }
             continue;
           }
 
@@ -59,7 +64,7 @@ export default class LightSystem {
 
           incomingLight = Math.max(
             0,
-            incomingLight - this.getBlockOpacity(blockId),
+            incomingLight - this.getBlockOpacity(blockId, true),
           );
         }
       }
@@ -105,8 +110,8 @@ export default class LightSystem {
     }
   }
 
-  private getBlockOpacity(blockId: number): number {
+  private getBlockOpacity(blockId: number, directSunlight = false): number {
     const block = this.world.gameContext.blockRegistry.getByIdOrThrow(blockId);
-    return block.solid ? block.lightOpacity : 0;
+    return directSunlight && !block.solid ? 0 : block.lightOpacity;
   }
 }

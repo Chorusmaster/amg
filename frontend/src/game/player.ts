@@ -56,6 +56,12 @@ export default class Player extends Entity {
       [playerSpritesheet.getFrame(0)],
       10
     );
+
+    const jumpAnimation = new Animation(
+      [playerSpritesheet.getFrame(4)],
+      10
+    );
+
     const walkAnimation = new Animation(
       [
         playerSpritesheet.getFrame(0),
@@ -67,7 +73,7 @@ export default class Player extends Entity {
     );
 
     const transform = new Transform(spawnPos, new Vector2(128, 128));
-    const mainCollider = new Collider(new Vector2(60, 122));
+    const mainCollider = new Collider(new Vector2(30, 122));
 
     super(
       "Player",
@@ -78,6 +84,7 @@ export default class Player extends Entity {
 
     this.animations.set("idle", idleAnimation);
     this.animations.set("walk", walkAnimation);
+    this.animations.set("jump", jumpAnimation);
     this.sprite!.animation = idleAnimation;
 
     this.mainCollider = mainCollider;
@@ -167,6 +174,8 @@ export default class Player extends Entity {
     super.update(dt);
     let directionX = 0;
 
+    const isGrounded = this.isGrounded();
+
     if (this.input.isKeyDown("KeyA")) {
       directionX -= 1;
       this.sprite!.flipX = true;
@@ -184,12 +193,13 @@ export default class Player extends Entity {
     }
 
     this.physicsBody!.velocity.x = directionX * this.speed;
-    if (this.physicsBody!.velocity.y !== 0) {
-      this.sprite!.play(this.getAnimationOrThrow("idle"));
+
+    if (this.input.isKeyDown("Space") && isGrounded) {
+      this.physicsBody!.velocity.y = this.jumpForce;
     }
 
-    if (this.input.isKeyDown("Space") && this.isGrounded()) {
-      this.physicsBody!.velocity.y = this.jumpForce;
+    if (!isGrounded) {
+      this.sprite!.play(this.getAnimationOrThrow("jump"));
     }
 
     this.worldMouseCoords = this.camera.screenToWorld(this.input.mousePosition);

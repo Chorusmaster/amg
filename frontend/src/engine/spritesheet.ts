@@ -20,7 +20,6 @@ export default class SpriteSheet {
 
         const x = (index % columns) * this.frameWidth;
         const y = Math.floor(index / columns) * this.frameHeight;
-        console.log(x, y, this.frameWidth, this.frameHeight)
 
         return {
             x,

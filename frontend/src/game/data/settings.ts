@@ -10,3 +10,4 @@ export const SHOW_HITBOXES = false;
 export const ITEM_DESPAWN_TIME = 100000;
 
 export const MAX_LIGHT = 16;
+export const BACKGROUND_TINT = 6;

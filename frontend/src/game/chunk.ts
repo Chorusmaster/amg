@@ -3,14 +3,16 @@ import { CHUNK_SIZE } from "./data/settings";
 export default class Chunk {
   private background: Uint16Array;
   private foreground: Uint16Array;
-  private light: Uint8Array;
+  private skyLight: Uint8Array
+  private blockLight: Uint8Array
 
   constructor() {
     const size = CHUNK_SIZE * CHUNK_SIZE;
 
     this.background = new Uint16Array(size);
     this.foreground = new Uint16Array(size);
-    this.light = new Uint8Array(size);
+    this.skyLight = new Uint8Array(size);
+    this.blockLight = new Uint8Array(size);
   }
 
   getBackground(x: number, y: number): number {
@@ -29,11 +31,23 @@ export default class Chunk {
     this.foreground[y * CHUNK_SIZE + x] = value;
   }
 
-  getLight(x: number, y: number): number {
-    return this.light[y * CHUNK_SIZE + x];
+  getTotalLight(x: number, y: number): number {
+    return this.getSkyLight(x, y);
   }
 
-  setLight(x: number, y: number, value: number): void {
-    this.light[y * CHUNK_SIZE + x] = value;
+  getSkyLight(x: number, y: number): number {
+    return this.skyLight[y * CHUNK_SIZE + x];
+  }
+
+  setSkyLight(x: number, y: number, value: number): void {
+    this.skyLight[y * CHUNK_SIZE + x] = value;
+  }
+
+  getBlockLight(x: number, y: number): number {
+    return this.blockLight[y * CHUNK_SIZE + x];
+  }
+
+  setBlockLight(x: number, y: number, value: number): void {
+    this.blockLight[y * CHUNK_SIZE + x] = value;
   }
 }

@@ -86,5 +86,7 @@ export default class SandboxGame implements Game {
 
     this.world.render(renderer, this.camera);
     this.player.render(renderer, this.camera);
+
+    this.world.renderLightning(renderer, this.camera);
   }
 }

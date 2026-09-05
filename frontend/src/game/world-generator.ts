@@ -66,29 +66,57 @@ export default class WorldGenerator {
       const surfaceHight = this.getSurfaceHeight(chunkX * CHUNK_SIZE + x);
       const dirtLevel = this.getStoneLevel(chunkX * CHUNK_SIZE + x);
 
+      const blockX = chunkX * CHUNK_SIZE + x;
+      this.world.surfaceY.set(blockX, surfaceHight);
+
       for (let y = 0; y < CHUNK_SIZE; y++) {
-        const blockX = chunkX * CHUNK_SIZE + x;
         const blockY = chunkY * CHUNK_SIZE + y;
         const biome = this.getBiomeType(chunkX * CHUNK_SIZE + x, chunkY * CHUNK_SIZE + y);
 
-        let blockType = 0;
+        let foregroundBlockType = 0;
+        let backgroundBlockType = 0;
         if (!this.isCave(chunkX * CHUNK_SIZE + x, chunkY * CHUNK_SIZE + y)) {
           if (blockY == surfaceHight) {
-            if (biome == 'PLAINS') blockType = 2;
-            else blockType = 5;
+            if (biome == 'PLAINS') {
+              foregroundBlockType = 2;
+            }
+            else {
+              foregroundBlockType = 5;
+            }
           }
           else if (blockY < surfaceHight && blockY >= surfaceHight - dirtLevel) {
-            if (biome == 'PLAINS') blockType = 1;
-            else blockType = 5;
+            if (biome == 'PLAINS') {
+              foregroundBlockType = 1;
+              backgroundBlockType = 1;
+            }
+            else {
+              foregroundBlockType = 5;
+              backgroundBlockType = 5;
+            }
           }
           else if (blockY < surfaceHight - dirtLevel) {
-            if (this.isCoal(chunkX * CHUNK_SIZE + x, chunkY * CHUNK_SIZE + y)) blockType = 4;
-            else if (this.isCopper(chunkX * CHUNK_SIZE + x, chunkY * CHUNK_SIZE + y)) blockType = 6;
-            else blockType = 3;
+            if (this.isCoal(chunkX * CHUNK_SIZE + x, chunkY * CHUNK_SIZE + y)) foregroundBlockType = 4;
+            else if (this.isCopper(chunkX * CHUNK_SIZE + x, chunkY * CHUNK_SIZE + y)) foregroundBlockType = 6;
+            else foregroundBlockType = 3;
+            backgroundBlockType = 3;
+          }
+        }
+        else {
+          if (blockY < surfaceHight && blockY >= surfaceHight - dirtLevel) {
+            if (biome == 'PLAINS') {
+              backgroundBlockType = 1;
+            }
+            else {
+              backgroundBlockType = 5;
+            }
+          }
+          else if (blockY < surfaceHight - dirtLevel) {
+            backgroundBlockType = 3;
           }
         }
           
-        chunk.setForeground(x, y, blockType);
+        chunk.setForeground(x, y, foregroundBlockType);
+        chunk.setBackground(x, y, backgroundBlockType);
       }
     }
 

@@ -39,6 +39,10 @@ npm run dev
 * Sprites, sprite sheets and animations
 * Physics system
 
+## Screenshot
+
+<img width="1672" height="852" alt="image" src="https://github.com/user-attachments/assets/47d251c0-b936-4529-b207-87e65b9270a5" />
+
 ## To be done someday (or not)
 
 * Trees and structures

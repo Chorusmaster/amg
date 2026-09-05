@@ -2,15 +2,18 @@ import Chunk from "./chunk";
 import { CHUNK_SIZE } from "./data/settings";
 import { createNoise2D } from "simplex-noise";
 import alea from "alea";
+import type World from "./world";
 
 type BIOME = "PLAINS" | "DESERT";
 
 export default class WorldGenerator {
   private readonly noise;
+  private readonly world: World;
 
-  constructor(seed: string) {
+  constructor(seed: string, world: World) {
     const random = alea(seed);
     this.noise = createNoise2D(random);
+    this.world = world;
   }
 
   getBiomeType(x: number, y: number): BIOME {
@@ -62,6 +65,7 @@ export default class WorldGenerator {
     for (let x = 0; x < CHUNK_SIZE; x++) {
       const surfaceHight = this.getSurfaceHeight(chunkX * CHUNK_SIZE + x);
       const dirtLevel = this.getStoneLevel(chunkX * CHUNK_SIZE + x);
+
       for (let y = 0; y < CHUNK_SIZE; y++) {
         const blockX = chunkX * CHUNK_SIZE + x;
         const blockY = chunkY * CHUNK_SIZE + y;
@@ -84,9 +88,11 @@ export default class WorldGenerator {
           }
         }
           
-        chunk.set(x, y, blockType);
+        chunk.setForeground(x, y, blockType);
       }
     }
+
+    this.world.lightSystem.setupChunkSunlight(chunk, chunkX, chunkY);
 
     return chunk;
   }

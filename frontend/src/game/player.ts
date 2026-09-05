@@ -15,6 +15,7 @@ import Inventory from "./inventory/inventory";
 import ItemStack from "./item-stack";
 import type ItemRegistry from "./item-registry";
 import type BlockRegistry from "./block-registry";
+import Sprite from "../engine/sprite";
 
 export default class Player extends Entity {
   readonly speed = 200;
@@ -45,9 +46,11 @@ export default class Player extends Entity {
 
     const mainCollider = new Collider(new Vector2(30, 92));
 
+    const playerSprite = new Sprite(playerImage);
+
     super(
       "Player",
-      playerImage,
+      playerSprite,
       transform,
       new PhysicsBody(transform, [mainCollider], true, true),
     );
@@ -59,7 +62,7 @@ export default class Player extends Entity {
     this.camera = camera;
     this.input = gameContext.input;
     this.world = world;
-    this.inventory = new Inventory(gameContext);
+    this.inventory = gameContext.inventory;
   }
 
   onTriggerEnter(other: Entity) {
@@ -149,32 +152,22 @@ export default class Player extends Entity {
 
     if (this.input.isMouseButtonPressed(0)) {
       const held = this.inventory.heldItem;
-      const slotId = this.inventory.getSlotIdByClickPos(this.input.mousePosition);
-      if (slotId === null) {
-        if (held) {
-          this.inventory.takeOutside();
-          const throwDirection = (this.input.mousePosition.x > this.camera.viewport.x / 2) ? 1 : -1;
-          const stack = new ItemStack(
-            [held], 
-            this.assetManager.getImage(this.itemRegistry.getByNameOrThrow(held.item).texture),
-            new Vector2(this.transform.position.x + (50 * throwDirection), this.transform.position.y + 50),
-          )
-          this.world.add(stack);
-        } else {
-          if (!this.selectionInteractable()) return;
-
-          const { x: blockX, y: blockY } = this.world.worldToBlockCoords(
-            this.worldMouseCoords,
-          );
-          this.world.setBlock(blockX, blockY, 0);
-        }
+      if (held) {
+        this.inventory.takeOutside();
+        const throwDirection = (this.input.mousePosition.x > this.camera.viewport.x / 2) ? 1 : -1;
+        const stack = new ItemStack(
+          [held], 
+          this.assetManager.getImage(this.itemRegistry.getByNameOrThrow(held.item).texture),
+          new Vector2(this.transform.position.x + (50 * throwDirection), this.transform.position.y + 50),
+        )
+        this.world.add(stack);
       } else {
-        const held = this.inventory.heldItem;
-        if (!held) {
-          this.inventory.take(slotId);
-        } else {
-          this.inventory.place(slotId);
-        }
+        if (!this.selectionInteractable()) return;
+
+        const { x: blockX, y: blockY } = this.world.worldToBlockCoords(
+          this.worldMouseCoords,
+        );
+        this.world.setBlock(blockX, blockY, 0);
       }
     }
 
@@ -185,7 +178,7 @@ export default class Player extends Entity {
       if (this.selectionInterferesBlock()) return;
 
       const activeSlot = this.inventory.activeSlot;
-      const activeSlotData = this.inventory.slots[activeSlot];
+      const activeSlotData = this.inventory.inventorySlots[activeSlot];
 
       if (activeSlotData && activeSlotData.quantity > 0)  {
         const item = this.itemRegistry.getByNameOrThrow(activeSlotData.item);
@@ -206,13 +199,8 @@ export default class Player extends Entity {
     }
   }
 
-  render(renderer: Renderer) {
-    renderer.drawWorldImage(
-      this.image,
-      this.camera,
-      this.transform.position,
-      this.transform.scale,
-    );
+  render(renderer: Renderer, camera: Camera) {
+    super.render(renderer, camera);
 
     const selectionVisible =
       this.selectionInteractable() &&
@@ -229,18 +217,5 @@ export default class Player extends Entity {
         new Vector2(BLOCK_SIZE, BLOCK_SIZE),
       );
     }
-
-    if (SHOW_HITBOXES) {
-      const collider = this.mainCollider;
-      const colliderSize = collider.getBounds(this.physicsBody!.transform);
-      renderer.drawWorldImage(
-        this.assetManager.getImage("hitbox"),
-        this.camera,
-        colliderSize.position,
-        new Vector2(colliderSize.width, colliderSize.height),
-      );
-    }
-
-    this.inventory.render(renderer);
   }
 }

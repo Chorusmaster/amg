@@ -1,12 +1,20 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import Engine from "./engine/engine";
 import SandboxGame from "./game/game";
+import Inventory from "./game_ui/inventory";
+import GameContext from "./game/game-context";
 
 export default function GameCanvas() {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const [game, setGame] = useState<SandboxGame | null>(null);
 
   useEffect(() => {
+    const awaitGameStart = async () => {
+      await gameEngine.start();
+      setGame(sandboxGame);
+    }
+
     const canvas = canvasRef.current;
     const container = containerRef.current;
 
@@ -28,7 +36,7 @@ export default function GameCanvas() {
     observer.observe(container);
 
     resize();
-    gameEngine.start();
+    awaitGameStart();
 
     return () => {
       observer.disconnect();
@@ -39,19 +47,18 @@ export default function GameCanvas() {
   return (
     <div
       ref={containerRef}
-      style={{
-        width: "100vw",
-        height: "100vh",
-      }}
+      className="w-screen h-screen"
     >
       <canvas
         ref={canvasRef}
-        style={{
-          display: "block",
-          width: "100%",
-          height: "100%",
-        }}
+        className="block w-full h-full"
       />
+      {
+        game?.gameContext?.inventory &&
+        <div id="gameUi" className="absolute top-0 left-0 w-full h-full pointer-events-none">
+          <Inventory gameContext={game.gameContext} />
+        </div>
+      }
     </div>
   );
 }

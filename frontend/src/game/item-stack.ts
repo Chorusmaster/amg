@@ -4,6 +4,7 @@ import Transform from "../engine/transform";
 import Vector2 from "../engine/vector2";
 import Collider from "../engine/physics/collider";
 import { ITEM_SIZE, ITEM_DESPAWN_TIME } from "./data/settings";
+import Sprite from "../engine/sprite";
 
 export type ItemEntry = {
   item: string,
@@ -19,9 +20,11 @@ export default class ItemStack extends Entity {
       new Vector2(ITEM_SIZE, ITEM_SIZE),
     );
 
+    const sprite = new Sprite(image);
+
     super(
       "Item_stack",
-      image,
+      sprite,
       transform,
       new PhysicsBody(
         transform,

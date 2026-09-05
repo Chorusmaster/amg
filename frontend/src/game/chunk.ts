@@ -1,17 +1,39 @@
 import { CHUNK_SIZE } from "./data/settings";
 
 export default class Chunk {
-  private blocks: number[];
+  private background: Uint16Array;
+  private foreground: Uint16Array;
+  private light: Uint8Array;
 
   constructor() {
-    this.blocks = new Array(CHUNK_SIZE * CHUNK_SIZE).fill(0);
+    const size = CHUNK_SIZE * CHUNK_SIZE;
+
+    this.background = new Uint16Array(size);
+    this.foreground = new Uint16Array(size);
+    this.light = new Uint8Array(size);
   }
 
-  get(x: number, y: number): number {
-    return this.blocks[y * CHUNK_SIZE + x];
+  getBackground(x: number, y: number): number {
+    return this.background[y * CHUNK_SIZE + x];
   }
 
-  set(x: number, y: number, value: number): void {
-    this.blocks[y * CHUNK_SIZE + x] = value;
+  setBackground(x: number, y: number, value: number): void {
+    this.background[y * CHUNK_SIZE + x] = value;
+  }
+
+  getForeground(x: number, y: number): number {
+    return this.foreground[y * CHUNK_SIZE + x];
+  }
+
+  setForeground(x: number, y: number, value: number): void {
+    this.foreground[y * CHUNK_SIZE + x] = value;
+  }
+
+  getLight(x: number, y: number): number {
+    return this.light[y * CHUNK_SIZE + x];
+  }
+
+  setLight(x: number, y: number, value: number): void {
+    this.light[y * CHUNK_SIZE + x] = value;
   }
 }

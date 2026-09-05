@@ -13,97 +13,114 @@ const SLOT_ROWS = 1;
 const SLOTS_IN_ROW = 10;
 const BOTTOM_MARGIN = 72;
 
-type InventorySlot = {
-  item: string,
-  quantity: number
-} | null
+export type InventorySlot = {
+  item: string;
+  quantity: number;
+} | null;
+
+export type InventorySnapshot = {
+  slots: InventorySlot[];
+  activeSlot: number;
+  heldItem: ItemEntry | null;
+};
 
 export default class Inventory {
   private itemRegistry: ItemRegistry;
   private assetManager: AssetManager;
   private viewport: Vector2;
-  private input: Input;
 
-  readonly slots: InventorySlot[];
+  private listeners = new Set<() => void>();
+
+  private slots: InventorySlot[];
   private selectedSlot = 0;
   private cursorItem: ItemEntry | null = null;
 
-  getSlotIdByClickPos(position: Vector2): number | null {
-    const inventoryWidth = SLOT_SIZE * SLOTS_IN_ROW;
-    const marginX = (this.viewport.x - inventoryWidth) / 2;
-    const y = this.viewport.y - BOTTOM_MARGIN;
+  private snapshot: InventorySnapshot;
 
-    const x = position.x - marginX;
-    const relativeY = position.y - y;
+  constructor(gameContext: GameContext) {
+    this.assetManager = gameContext.assetManager;
+    this.itemRegistry = gameContext.itemRegistry;
+    this.viewport = gameContext.viewport;
 
-    if (
-      x < 0 ||
-      x >= inventoryWidth ||
-      relativeY < 0 ||
-      relativeY >= SLOT_SIZE
-    ) {
-      return null;
-    }
+    this.slots = Array(SLOT_ROWS * SLOTS_IN_ROW).fill(null);
 
-    return Math.floor(x / SLOT_SIZE);
+    this.snapshot = {
+      slots: this.slots,
+      activeSlot: this.selectedSlot,
+      heldItem: this.cursorItem
+    };
   }
 
-  /** Function adds as much as possible items to inventory and returns remaining */
+  /** Adds as many items as possible and returns remained */
   add(entry: ItemEntry): ItemEntry | null {
-    // Fill existing stacks
-    for (let i = 0; i < this.slots.length; i++) {
-      const slot = this.slots[i];
+    let remaining = entry.quantity;
+    let changed = false;
 
-      if (slot === null || slot.item !== entry.item)
+    const slots = [...this.slots];
+
+    for (let i = 0; i < slots.length && remaining > 0; i++) {
+      const slot = slots[i];
+
+      if (!slot || slot.item !== entry.item)
         continue;
 
-      const totalQuantity = slot.quantity + entry.quantity;
+      const space = MAX_STACK - slot.quantity;
 
-      if (totalQuantity <= MAX_STACK) {
-        slot.quantity = totalQuantity;
-        return null;
-      }
-
-      slot.quantity = MAX_STACK;
-
-      entry = {
-        item: entry.item,
-        quantity: totalQuantity - MAX_STACK
-      };
-    }
-
-    // Fill empty slots
-    for (let i = 0; i < this.slots.length; i++) {
-      if (this.slots[i] !== null)
+      if (space <= 0)
         continue;
 
-      if (entry.quantity <= MAX_STACK) {
-        this.slots[i] = entry;
-        return null;
-      }
+      const amount = Math.min(space, remaining);
 
-      this.slots[i] = {
-        item: entry.item,
-        quantity: MAX_STACK
+      slots[i] = {
+        item: slot.item,
+        quantity: slot.quantity + amount
       };
 
-      entry = {
-        item: entry.item,
-        quantity: entry.quantity - MAX_STACK
-      };
+      remaining -= amount;
+      changed = true;
     }
 
-    return entry;
+    for (let i = 0; i < slots.length && remaining > 0; i++) {
+      if (slots[i] !== null)
+        continue;
+
+      const amount = Math.min(MAX_STACK, remaining);
+
+      slots[i] = {
+        item: entry.item,
+        quantity: amount
+      };
+
+      remaining -= amount;
+      changed = true;
+    }
+
+    if (!changed)
+      return entry;
+
+    this.slots = slots;
+    this.notify();
+
+    return remaining > 0
+      ? {
+          item: entry.item,
+          quantity: remaining
+        }
+      : null;
   }
 
   selectNext() {
     this.selectedSlot =
       (this.selectedSlot + 1) % SLOTS_IN_ROW;
+
+    this.notify();
   }
 
   selectPrevious() {
     this.selectedSlot =
       (this.selectedSlot - 1 + SLOTS_IN_ROW) % SLOTS_IN_ROW;
+
+    this.notify();
   }
 
   get activeSlot() {
@@ -114,7 +131,13 @@ export default class Inventory {
     return this.cursorItem;
   }
 
+  get inventorySlots() {
+    return this.slots;
+  }
+
   take(slotId: number) {
+    console.trace("INVENTORY TAKE", slotId);
+
     if (this.cursorItem !== null)
       return;
 
@@ -123,121 +146,123 @@ export default class Inventory {
     if (!slot)
       return;
 
-    this.cursorItem = slot;
+    this.slots = [...this.slots];
+
+    this.cursorItem = {
+      item: slot.item,
+      quantity: slot.quantity
+    };
+
     this.slots[slotId] = null;
+
+    this.notify();
   }
 
   place(slotId: number) {
+    console.trace("INVENTORY PLACE", slotId);
+    
     if (!this.cursorItem)
       return;
 
+    const cursorItem = this.cursorItem;
     const slot = this.slots[slotId];
 
+    this.slots = [...this.slots];
+
     if (!slot) {
-      this.slots[slotId] = this.cursorItem;
+      this.slots[slotId] = cursorItem;
       this.cursorItem = null;
+
+      this.notify();
       return;
     }
 
-    if (slot.item === this.cursorItem.item) {
-      const total = slot.quantity + this.cursorItem.quantity;
+    if (slot.item === cursorItem.item) {
+      const total = slot.quantity + cursorItem.quantity;
 
-      slot.quantity = Math.min(total, MAX_STACK);
+      this.slots[slotId] = {
+        item: slot.item,
+        quantity: Math.min(total, MAX_STACK)
+      };
 
       if (total <= MAX_STACK) {
         this.cursorItem = null;
       } else {
-        this.cursorItem.quantity = total - MAX_STACK;
+        this.cursorItem = {
+          item: cursorItem.item,
+          quantity: total - MAX_STACK
+        };
       }
 
+      this.notify();
       return;
     }
 
-    const oldSlot = this.slots[slotId];
-    this.slots[slotId] = this.cursorItem;
-    this.cursorItem = oldSlot;
+    this.slots[slotId] = cursorItem;
+    this.cursorItem = slot;
+
+    this.notify();
   }
 
   takeOutside() {
+    if (!this.cursorItem)
+      return null;
+
     const item = this.cursorItem;
+
     this.cursorItem = null;
+
+    this.notify();
 
     return item;
   }
 
   removeQuantity(slotId: number, quantity: number) {
-    const slotData = this.slots[slotId];
+    const slot = this.slots[slotId];
 
-    if (!slotData) {
+    if (!slot)
       throw new Error("This slot is empty");
-    }
 
-    const newQuantity = slotData.quantity - quantity;
+    const newQuantity = slot.quantity - quantity;
 
-    if (newQuantity < 0) {
+    if (newQuantity < 0)
       throw new Error("Slot cannot have negative quantity");
-    }
+
+    this.slots = [...this.slots];
 
     if (newQuantity === 0) {
       this.slots[slotId] = null;
     } else {
       this.slots[slotId] = {
-        item: slotData.item,
+        item: slot.item,
         quantity: newQuantity
       };
     }
+
+    this.notify();
   }
 
-  render(renderer: Renderer) {
-    const marginX = (this.viewport.x - (SLOT_SIZE * SLOTS_IN_ROW)) / 2;
-    for (let i = 0; i < SLOTS_IN_ROW; i++) {
-      const slotPosition = new Vector2(
-        Math.round(marginX + i * SLOT_SIZE),
-        Math.round(this.viewport.y - BOTTOM_MARGIN)
-      );
+  subscribe = (listener: () => void) => {
+    this.listeners.add(listener);
 
-      const itemPosition = slotPosition.addScalar(Math.round(SLOT_SIZE / 4));
-      const textPosition = slotPosition.addScalar(Math.round(SLOT_SIZE / 8 * 7));
+    return () => {
+      this.listeners.delete(listener);
+    };
+  };
 
-      const slotSize = new Vector2(SLOT_SIZE, SLOT_SIZE);
-      const itemSize = new Vector2(SLOT_ITEM_SIZE, SLOT_ITEM_SIZE);
+  getSnapshot = (): InventorySnapshot => {
+    return this.snapshot;
+  };
 
-      const slotImage = i === this.selectedSlot ?
-        this.assetManager.getImage("inventory_slot_selected") :
-        this.assetManager.getImage("inventory_slot");
+  private notify() {
+    this.snapshot = {
+      slots: this.slots,
+      activeSlot: this.selectedSlot,
+      heldItem: this.cursorItem
+    };
 
-      renderer.drawImage(
-        slotImage, 
-        slotPosition, 
-        slotSize
-      );
-
-      const entry = this.slots[i];
-      if (entry) {
-        renderer.drawImage(this.assetManager.getImage(entry.item), itemPosition, itemSize);
-        renderer.drawText(entry.quantity.toString(), textPosition)
-      }
+    for (const listener of this.listeners) {
+      listener();
     }
-
-    if (this.cursorItem) {
-      renderer.drawImage(
-        this.assetManager.getImage(this.cursorItem.item),
-        this.input.mousePosition.addScalar(-SLOT_ITEM_SIZE / 2),
-        new Vector2(SLOT_ITEM_SIZE, SLOT_ITEM_SIZE)
-      );
-
-      renderer.drawText(
-        this.cursorItem.quantity.toString(),
-        this.input.mousePosition.addScalar(SLOT_ITEM_SIZE / 4 * 3),
-      );
-    }
-  }
-
-  constructor(gameContext: GameContext) {
-    this.assetManager = gameContext.assetManager;
-    this.itemRegistry = gameContext.itemRegistry;
-    this.viewport = gameContext.viewport;
-    this.input = gameContext.input;
-    this.slots = Array(SLOT_ROWS * SLOTS_IN_ROW).fill(null);
   }
 }

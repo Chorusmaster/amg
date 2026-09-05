@@ -1,5 +1,9 @@
 import Vector2 from "./vector2";
 
+export type InputSnapshot = {
+  mousePos: Vector2
+};
+
 export default class Input {
   private keys = new Set<string>();
 
@@ -11,6 +15,9 @@ export default class Input {
 
   private canvas: HTMLCanvasElement;
 
+  private listeners = new Set<() => void>();
+  private snapshot: InputSnapshot;
+
   constructor(canvas: HTMLCanvasElement) {
     this.canvas = canvas;
 
@@ -21,8 +28,12 @@ export default class Input {
     canvas.addEventListener("pointerdown", this.handleMouseDown);
     canvas.addEventListener("pointerup", this.handleMouseUp);
     canvas.addEventListener("contextmenu", this.handleContextMenu);
-    canvas.addEventListener("pointermove", this.handleMouseMove);
+    document.addEventListener("pointermove", this.handleMouseMove);
     canvas.addEventListener("wheel", this.handleWheelMove);
+
+    this.snapshot = {
+      mousePos: this.mousePos
+    };
   }
 
   private handleKeyDown = (e: KeyboardEvent) => {
@@ -67,6 +78,8 @@ export default class Input {
       e.clientX - rect.left,
       e.clientY - rect.top
     );
+
+    this.notify();
   };
 
   private handleWheelMove = (e: WheelEvent) => {
@@ -111,7 +124,29 @@ export default class Input {
     this.canvas.removeEventListener("pointerdown", this.handleMouseDown);
     this.canvas.removeEventListener("pointerup", this.handleMouseUp);
     this.canvas.removeEventListener("contextmenu", this.handleContextMenu);
-    this.canvas.removeEventListener("pointermove", this.handleMouseMove);
+    document.removeEventListener("pointermove", this.handleMouseMove);
     this.canvas.removeEventListener("wheel", this.handleWheelMove);
+  }
+
+  subscribe = (listener: () => void) => {
+    this.listeners.add(listener);
+
+    return () => {
+      this.listeners.delete(listener);
+    };
+  };
+
+  getSnapshot = (): InputSnapshot => {
+    return this.snapshot;
+  };
+
+  private notify() {
+    this.snapshot = {
+      mousePos: this.mousePos
+    };
+
+    for (const listener of this.listeners) {
+      listener();
+    }
   }
 }

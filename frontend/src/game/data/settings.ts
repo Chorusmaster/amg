@@ -8,3 +8,5 @@ export const LOADED_CHUNKS_Y = 6;
 export const SHOW_HITBOXES = false;
 
 export const ITEM_DESPAWN_TIME = 100000;
+
+export const MAX_LIGHT = 16;

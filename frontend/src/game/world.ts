@@ -14,21 +14,27 @@ import {
   CHUNK_SIZE,
   LOADED_CHUNKS_X,
   LOADED_CHUNKS_Y,
+  MAX_LIGHT
 } from "./data/settings";
+
 import Collider from "../engine/physics/collider";
 import Transform from "../engine/transform";
 import GameContext from "./game-context";
 import type AssetManager from "../engine/asset-manager";
 import type BlockRegistry from "./block-registry";
 import type ItemRegistry from "./item-registry";
+import LightSystem from "./light-system";
 
 export default class World implements CollisionWorld {
   private entities: Entity[] = [];
   private chunks = new Map<string, Chunk>();
   private blockRegistry: BlockRegistry;
   private itemRegistry: ItemRegistry;
-  private worldGenerater: WorldGenerator;
   private assetManager: AssetManager;
+
+  readonly lightSystem: LightSystem;
+  readonly worldGenerator: WorldGenerator;
+  readonly gameContext: GameContext;
   readonly seed: string;
   readonly gravityAcceleration = 500;
 
@@ -36,10 +42,12 @@ export default class World implements CollisionWorld {
     if (!seed) seed = Math.random().toString();
     this.seed = seed;
 
+    this.gameContext = gameContext;
     this.assetManager = gameContext.assetManager;
     this.blockRegistry = gameContext.blockRegistry;
     this.itemRegistry = gameContext.itemRegistry;
-    this.worldGenerater = new WorldGenerator(this.seed);
+    this.worldGenerator = new WorldGenerator(this.seed, this);
+    this.lightSystem = new LightSystem(this);
   }
 
   // ENTITIES
@@ -98,7 +106,7 @@ export default class World implements CollisionWorld {
     const localX = this.worldToLocalCoord(x);
     const localY = this.worldToLocalCoord(y);
 
-    return chunk.get(localX, localY);
+    return chunk.getForeground(localX, localY);
   }
 
   setBlock(x: number, y: number, block: number) {
@@ -136,7 +144,43 @@ export default class World implements CollisionWorld {
       this.setBlock(x, y - 1, this.blockRegistry.getByNameOrThrow("dirt").id);
     }
 
-    chunk.set(localX, localY, block);
+    chunk.setForeground(localX, localY, block);
+    
+    const light = this.getLight(x, y + 1);
+
+    this.lightSystem.spreadSunlight(
+      x,
+      y + 1,
+      light,
+    );
+  }
+
+  // LIGHT
+
+  getLight(x: number, y: number): number {
+    const chunkX = this.worldToChunkCoord(x);
+    const chunkY = this.worldToChunkCoord(y);
+
+    const chunk = this.getChunk(chunkX, chunkY);
+    if (!chunk) return 0;
+
+    const localX = this.worldToLocalCoord(x);
+    const localY = this.worldToLocalCoord(y);
+
+    return chunk.getLight(localX, localY);
+  }
+
+  setLight(x: number, y: number, value: number): void {
+    const chunkX = this.worldToChunkCoord(x);
+    const chunkY = this.worldToChunkCoord(y);
+
+    const chunk = this.getChunk(chunkX, chunkY);
+    if (!chunk) return;
+
+    const localX = this.worldToLocalCoord(x);
+    const localY = this.worldToLocalCoord(y);
+
+    chunk.setLight(localX, localY, value);
   }
 
   // CHUNKS
@@ -146,7 +190,7 @@ export default class World implements CollisionWorld {
   }
 
   generateChunk(chunkX: number, chunkY: number) {
-    const chunk = this.worldGenerater.generateChunk(chunkX, chunkY);
+    const chunk = this.worldGenerator.generateChunk(chunkX, chunkY);
     this.chunks.set(`${chunkX},${chunkY}`, chunk);
     return chunk;
   }
@@ -184,20 +228,43 @@ export default class World implements CollisionWorld {
 
     for (let y = 0; y < CHUNK_SIZE; y++) {
       for (let x = 0; x < CHUNK_SIZE; x++) {
-        const texture = this.blockRegistry.getByIdOrThrow(chunk.get(x, y)).texture;
-        if (!texture) continue;
+        const texture = this.blockRegistry.getByIdOrThrow(chunk.getForeground(x, y)).texture;
+        
+        const light = chunk.getLight(x, y);
+        const brightness = Math.max(0, Math.min(1, light / MAX_LIGHT));
+        const tint = `rgba(0, 0, 0, ${1 - brightness})`;
 
         const position = this.blockToWorldCoords(
           Number.parseInt(chunkX) * CHUNK_SIZE + x,
           Number.parseInt(chunkY) * CHUNK_SIZE + y,
         );
 
-        renderer.drawWorldImage(
-          this.assetManager.getImage(texture),
-          camera,
-          position,
-          new Vector2(BLOCK_SIZE, BLOCK_SIZE),
+        if (!texture)  {
+          renderer.drawWorldRect(
+            camera,
+            position,
+            new Vector2(BLOCK_SIZE, BLOCK_SIZE),
+            tint
         );
+          continue;
+        }
+
+        if (light == 0) {
+          renderer.drawWorldRect(
+            camera,
+            position,
+            new Vector2(BLOCK_SIZE, BLOCK_SIZE),
+            tint
+          );
+        } else {
+          renderer.drawWorldImage(
+            this.assetManager.getImage(texture),
+            camera,
+            position,
+            new Vector2(BLOCK_SIZE, BLOCK_SIZE),
+            tint
+          );
+        }
       }
     }
   }
@@ -234,12 +301,7 @@ export default class World implements CollisionWorld {
     }
 
     for (const entity of this.entities) {
-      renderer.drawWorldImage(
-        entity.image,
-        camera,
-        entity.transform.position,
-        entity.transform.scale,
-      );
+      entity.render(renderer, camera);
     }
   }
 

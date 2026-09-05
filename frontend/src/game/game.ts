@@ -58,6 +58,10 @@ export default class SandboxGame implements Game {
     this.initialized = true;
   }
 
+  get gameContext() {
+    return this.context;
+  }
+
   resize(viewportSize: Vector2) {
     if (!this.initialized) return;
 
@@ -81,6 +85,6 @@ export default class SandboxGame implements Game {
     renderer.clear("skyblue");
 
     this.world.render(renderer, this.camera);
-    this.player.render(renderer);
+    this.player.render(renderer, this.camera);
   }
 }

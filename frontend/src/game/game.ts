@@ -5,11 +5,12 @@ import Camera from "../engine/camera";
 import Vector2 from "../engine/vector2";
 import Input from "../engine/input";
 import World from "./world";
-import BlockRegistry from "./block-registry";
+import BlockRegistry from "./registries/block-registry";
 import Physics from "../engine/physics/physics";
 import Player from "./player";
 import GameContext from "./game-context";
-import ItemRegistry from "./item-registry";
+import ItemRegistry from "./registries/item-registry";
+import BiomeRegistry from "./registries/biome-registry";
 
 export default class SandboxGame implements Game {
   private initialized = false;
@@ -21,8 +22,8 @@ export default class SandboxGame implements Game {
   private world!: World;
 
   readonly settings = {
-    imageSmoothing: false
-  }
+    imageSmoothing: false,
+  };
 
   async initialize(
     assetManager: AssetManager,
@@ -33,24 +34,34 @@ export default class SandboxGame implements Game {
     assetManager.loadImage("hitbox", "/assets/hitbox.png");
     assetManager.loadImage("selection", "/assets/selection.png");
     assetManager.loadImage("inventory_slot", "/assets/inventory_slot.png");
-    assetManager.loadImage("inventory_slot_selected", "/assets/inventory_slot_selected.png");
+    assetManager.loadImage(
+      "inventory_slot_selected",
+      "/assets/inventory_slot_selected.png",
+    );
 
     this.camera = new Camera(viewportSize);
-    
+
     const blockRegistry = await BlockRegistry.create(assetManager);
     const itemRegistry = await ItemRegistry.create(assetManager, blockRegistry);
-    
+    const biomeRegistry = await BiomeRegistry.create(blockRegistry);
+
     this.context = new GameContext(
       input,
       assetManager,
       blockRegistry,
       itemRegistry,
-      this.camera.viewport
+      biomeRegistry,
+      this.camera.viewport,
     );
 
     this.world = new World(this.context);
 
-    this.player = new Player(this.context, new Vector2(0, 100), this.camera, this.world);
+    this.player = new Player(
+      this.context,
+      new Vector2(0, 100),
+      this.camera,
+      this.world,
+    );
     this.world.add(this.player);
 
     this.physics = new Physics(this.world);
@@ -69,7 +80,7 @@ export default class SandboxGame implements Game {
   }
 
   update(dt: number) {
-    if (this.initialized === false) 
+    if (this.initialized === false)
       throw new Error("Game must be initialized first to update");
 
     this.player.update(dt);

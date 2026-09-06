@@ -2,6 +2,7 @@
   {
     "id": 0,
     "name": "air",
+    "textureType": "single",
     "texture": null,
     "solid": false,
     "drops": [],
@@ -11,6 +12,7 @@
   {
     "id": 1,
     "name": "dirt",
+    "textureType": "single",
     "texture": "dirt",
     "solid": true,
     "drops": [
@@ -24,12 +26,13 @@
   },
   {
     "id": 2,
-    "name": "grass",
-    "texture": "grass",
+    "name": "grass_block",
+    "textureType": "single",
+    "texture": "grass_block",
     "solid": true,
     "drops": [
       {
-        "item": "grass",
+        "item": "grass_block",
         "quantity": 1
       }
     ],
@@ -39,6 +42,7 @@
   {
     "id": 3,
     "name": "stone",
+    "textureType": "single",
     "texture": "stone",
     "solid": true,
     "drops": [
@@ -53,6 +57,7 @@
   {
     "id": 4,
     "name": "coal_ore",
+    "textureType": "single",
     "texture": "coal_ore",
     "solid": true,
     "drops": [
@@ -67,6 +72,7 @@
   {
     "id": 5,
     "name": "sand",
+    "textureType": "single",
     "texture": "sand",
     "solid": true,
     "drops": [
@@ -81,6 +87,7 @@
   {
     "id": 6,
     "name": "copper_ore",
+    "textureType": "single",
     "texture": "copper_ore",
     "solid": true,
     "drops": [
@@ -89,7 +96,134 @@
         "quantity": 1
       }
     ],
-    "lightOpacity": 0,
-    "emission": 14
+    "lightOpacity": 10,
+    "emission": 0
+  },
+  {
+    "id": 7,
+    "name": "wood",
+    "texture": "tree",
+    "textureType": "spritesheet",
+    "variants": [
+      {
+        "name": "branch",
+        "spriteIndex": 14,
+        "rule" : {
+          "top": "other",
+          "bottom": "none",
+          "horizontal": "same"
+        }
+      },
+      {
+        "name": "trunk_base",
+        "spriteIndex": 12,
+        "rule" : {
+          "bottom": "other_solid"
+        }
+      },
+      {
+        "name": "trunk_left",
+        "spriteIndex": 15,
+        "rule" : {
+          "top": "same",
+          "bottom": "same",
+          "left": "same",
+          "right": "other"
+        }
+      },
+      {
+        "name": "trunk_right",
+        "spriteIndex": 13,
+        "rule" : {
+          "top": "same",
+          "bottom": "same",
+          "left": "other",
+          "right": "same"
+        }
+      },
+      {
+        "name": "trunk_both",
+        "spriteIndex": 9,
+        "rule" : {
+          "top": "same",
+          "bottom": "same",
+          "left": "same",
+          "right": "same"
+        }
+      },
+      {
+        "name": "trunk",
+        "spriteIndex": 8,
+        "rule" : {
+          "default": true
+        }
+      }
+    ],
+    "lightOpacity": 10,
+    "emission": 0,
+    "solid": false,
+    "drops": []
+  },
+  {
+    "id": 8,
+    "name": "leaves",
+    "texture": "tree",
+    "textureType": "spritesheet",
+    "variants": [
+      {
+        "name": "left_top",
+        "spriteIndex": 2,
+        "rule" : {
+          "top": "none",
+          "left": "none"
+        }
+      },
+      {
+        "name": "right_top",
+        "spriteIndex": 3,
+        "rule" : {
+          "top": "none",
+          "right": "none"
+        }
+      },
+      {
+        "name": "left_bottom",
+        "spriteIndex": 6,
+        "rule" : {
+          "bottom": "none",
+          "left": "none"
+        }
+      },
+      {
+        "name": "right_bottom",
+        "spriteIndex": 7,
+        "rule" : {
+          "bottom": "none",
+          "right": "none"
+        }
+      },
+      {
+        "name": "center",
+        "spriteIndex": 11,
+        "rule" : {
+          "default": true
+        },
+        "randomRotation": true
+      }
+    ],
+    "lightOpacity": 10,
+    "emission": 0,
+    "solid": false,
+    "drops": []
+  },
+  {
+    "id": 9,
+    "name": "grass",
+    "textureType": "single",
+    "texture": "grass",
+    "solid": false,
+    "drops": [],
+    "lightOpacity": 5,
+    "emission": 0
   }
 ]

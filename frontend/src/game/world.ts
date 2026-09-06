@@ -3,11 +3,12 @@ import Entity from "../engine/entity";
 import type Renderer from "../engine/renderer";
 import Vector2 from "../engine/vector2";
 import Chunk from "./chunk";
-import WorldGenerator from "./world-generator";
+import WorldGenerator from "./generation/world-generator";
 import type CollisionWorld from "../engine/physics/collision-world";
 import AABB from "../engine/physics/AABB";
 import type WorldCollider from "../engine/physics/world-collider";
 import ItemStack from "./item-stack";
+import type { Block, BlockContext } from "./registries/block-registry";
 
 import {
   BACKGROUND_TINT,
@@ -15,20 +16,21 @@ import {
   CHUNK_SIZE,
   LOADED_CHUNKS_X,
   LOADED_CHUNKS_Y,
-  MAX_LIGHT
+  MAX_LIGHT,
 } from "./data/settings";
 
 import Collider from "../engine/physics/collider";
 import Transform from "../engine/transform";
 import GameContext from "./game-context";
 import type AssetManager from "../engine/asset-manager";
-import type BlockRegistry from "./block-registry";
-import type ItemRegistry from "./item-registry";
+import type BlockRegistry from "./registries/block-registry";
+import type ItemRegistry from "./registries/item-registry";
 import LightSystem from "./light-system";
 
 export default class World implements CollisionWorld {
   private entities: Entity[] = [];
   private chunks = new Map<string, Chunk>();
+  private loadedChunks = new Map<string, Chunk>();
   private blockRegistry: BlockRegistry;
   private itemRegistry: ItemRegistry;
   private assetManager: AssetManager;
@@ -49,7 +51,7 @@ export default class World implements CollisionWorld {
     this.assetManager = gameContext.assetManager;
     this.blockRegistry = gameContext.blockRegistry;
     this.itemRegistry = gameContext.itemRegistry;
-    this.worldGenerator = new WorldGenerator(this.seed, this);
+    this.worldGenerator = new WorldGenerator(seed, this);
     this.lightSystem = new LightSystem(this);
   }
 
@@ -99,24 +101,25 @@ export default class World implements CollisionWorld {
 
   // BLOCKS
 
-  getBlock(x: number, y: number) {
+  getBlock(x: number, y: number, foreground: boolean = true) {
     const chunkX = this.worldToChunkCoord(x);
     const chunkY = this.worldToChunkCoord(y);
 
-    const chunk = this.chunks.get(`${chunkX},${chunkY}`);
+    const chunk = this.loadedChunks.get(`${chunkX},${chunkY}`);
     if (!chunk) return undefined;
 
     const localX = this.worldToLocalCoord(x);
     const localY = this.worldToLocalCoord(y);
 
-    return chunk.getForeground(localX, localY);
+    if (foreground) return chunk.getForeground(localX, localY);
+    else return chunk.getBackground(localX, localY);
   }
 
   setBlock(x: number, y: number, block: number) {
     const chunkX = this.worldToChunkCoord(x);
     const chunkY = this.worldToChunkCoord(y);
 
-    const chunk = this.chunks.get(`${chunkX},${chunkY}`);
+    const chunk = this.loadedChunks.get(`${chunkX},${chunkY}`);
     if (!chunk) return;
 
     const localX = this.worldToLocalCoord(x);
@@ -131,7 +134,9 @@ export default class World implements CollisionWorld {
       const drops = oldBlock.drops;
 
       if (drops.length > 0) {
-        const texture = this.itemRegistry.getByNameOrThrow(drops[0].item).texture;
+        const texture = this.itemRegistry.getByNameOrThrow(
+          drops[0].item,
+        ).texture;
 
         const itemStack = new ItemStack(
           drops,
@@ -143,15 +148,26 @@ export default class World implements CollisionWorld {
         );
         this.add(itemStack);
       }
-    }
-    else  {
-      if (this.getBlock(x, y - 1) === this.blockRegistry.getByNameOrThrow("grass").id) {
+    } else {
+      if (
+        this.getBlock(x, y - 1) ===
+        this.blockRegistry.getByNameOrThrow("grass").id
+      ) {
         this.setBlock(x, y - 1, this.blockRegistry.getByNameOrThrow("dirt").id);
       }
     }
 
     chunk.setForeground(localX, localY, block);
     this.lightSystem.onBlockChanged();
+  }
+
+  getBlockContext(x: number, y: number, foreground = true): BlockContext {
+    return {
+      top: this.getBlock(x, y - 1, foreground),
+      bottom: this.getBlock(x, y + 1, foreground),
+      left: this.getBlock(x - 1, y, foreground),
+      right: this.getBlock(x + 1, y, foreground),
+    };
   }
 
   // LIGHT
@@ -199,22 +215,22 @@ export default class World implements CollisionWorld {
     return chunk.getTotalLight(localX, localY);
   }
 
-  // CHUNKS
+  // loadedCHUNKS
 
   getChunk(x: number, y: number) {
-    return this.chunks.get(`${x},${y}`);
+    return this.loadedChunks.get(`${x},${y}`);
   }
 
   generateChunk(chunkX: number, chunkY: number) {
     const chunk = this.worldGenerator.generateChunk(chunkX, chunkY);
-    this.chunks.set(`${chunkX},${chunkY}`, chunk); 
+    this.chunks.set(`${chunkX},${chunkY}`, chunk);
     this.lightSystem.onChunkLoaded();
 
     return chunk;
   }
 
   getLoadedChunkCoordinates(): Array<[number, number]> {
-    return Array.from(this.chunks.keys(), key => {
+    return Array.from(this.loadedChunks.keys(), (key) => {
       const [chunkX, chunkY] = key.split(",");
       return [Number(chunkX), Number(chunkY)];
     });
@@ -222,7 +238,7 @@ export default class World implements CollisionWorld {
 
   // RENDER
 
-  loadNearbyChunks(camera: Camera) {
+  loadNearbyloadedChunks(camera: Camera) {
     const cameraBlockCoords = this.worldToBlockCoords(camera.position);
     const cameraChunkX = this.worldToChunkCoord(cameraBlockCoords.x);
     const cameraChunkY = this.worldToChunkCoord(cameraBlockCoords.y);
@@ -237,10 +253,39 @@ export default class World implements CollisionWorld {
       for (let x = startX; x < endX; x++) {
         const chunkX = x + cameraChunkX;
         const chunkY = y + cameraChunkY;
+        const key = `${chunkX},${chunkY}`;
 
-        if (!this.chunks.has(`${chunkX},${chunkY}`)) {
+        if (!this.chunks.has(key)) {
           this.generateChunk(chunkX, chunkY);
         }
+        this.loadedChunks.set(key, this.chunks.get(key)!);
+      }
+    }
+  }
+
+  unloadFarChunks(camera: Camera) {
+    const cameraBlockCoords = this.worldToBlockCoords(camera.position);
+    const cameraChunkX = this.worldToChunkCoord(cameraBlockCoords.x);
+    const cameraChunkY = this.worldToChunkCoord(cameraBlockCoords.y);
+
+    const startX = cameraChunkX + Math.floor(-LOADED_CHUNKS_X / 2);
+    const startY = cameraChunkY + Math.floor(-LOADED_CHUNKS_Y / 2);
+
+    const endX = startX + LOADED_CHUNKS_X;
+    const endY = startY + LOADED_CHUNKS_Y;
+
+    for (const [key] of this.loadedChunks) {
+      const [rawChunkX, rawChunkY] = key.split(",");
+      const chunkX = Number(rawChunkX);
+      const chunkY = Number(rawChunkY);
+
+      if (
+        chunkX < startX ||
+        chunkX >= endX ||
+        chunkY < startY ||
+        chunkY >= endY
+      ) {
+        this.loadedChunks.delete(key);
       }
     }
   }
@@ -250,56 +295,92 @@ export default class World implements CollisionWorld {
     return `rgba(0, 0, 0, ${1 - brightness})`;
   }
 
+  renderBlock(
+    renderer: Renderer,
+    camera: Camera,
+    block: Block,
+    blockPosition: Vector2,
+    foreground: boolean = true,
+  ) {
+    const tint = foreground
+      ? undefined
+      : this.getShadowTint(MAX_LIGHT - BACKGROUND_TINT);
+    const worldPosition = this.blockToWorldCoords(
+      blockPosition.x,
+      blockPosition.y,
+    );
+
+    if (block.textureType === "spritesheet") {
+      const context: BlockContext = {
+        top: this.getBlock(blockPosition.x, blockPosition.y + 1, foreground),
+        bottom: this.getBlock(blockPosition.x, blockPosition.y - 1, foreground),
+        right: this.getBlock(blockPosition.x + 1, blockPosition.y, foreground),
+        left: this.getBlock(blockPosition.x - 1, blockPosition.y, foreground),
+      };
+
+      const sprite = this.blockRegistry.getBlockSpriteByContext(
+        block.id,
+        context,
+      );
+
+      if (sprite) {
+        renderer.drawWorldSprite(
+          sprite,
+          camera,
+          worldPosition,
+          new Vector2(BLOCK_SIZE, BLOCK_SIZE),
+          tint,
+        );
+      }
+    } else if (block.textureType === "single") {
+      if (block.texture) {
+        renderer.drawWorldImage(
+          this.assetManager.getImage(block.texture),
+          camera,
+          worldPosition,
+          new Vector2(BLOCK_SIZE, BLOCK_SIZE),
+          tint,
+        );
+      }
+    }
+  }
+
   renderChunk(key: string, renderer: Renderer, camera: Camera) {
     const [chunkX, chunkY] = key.split(",");
-    const chunk = this.chunks.get(key);
+    const chunk = this.loadedChunks.get(key);
     if (!chunk)
-      throw new Error("Chunk you are trying to render is not generated yet");
+      throw new Error("Chunk you are trying to render is not loaded yet");
 
     for (let y = 0; y < CHUNK_SIZE; y++) {
       for (let x = 0; x < CHUNK_SIZE; x++) {
-        const foregroundTexture = this.blockRegistry.getByIdOrThrow(chunk.getForeground(x, y)).texture;
-        const backgroundTexture = this.blockRegistry.getByIdOrThrow(chunk.getBackground(x, y)).texture;
-        
-        const backgroundLight = MAX_LIGHT - BACKGROUND_TINT;
-        const backgroundTint = this.getShadowTint(backgroundLight);
+        const foregroundBlockId = chunk.getForeground(x, y);
+        const backgroundBlockId = chunk.getBackground(x, y);
 
-        const position = this.blockToWorldCoords(
+        const foregroundBlock =
+          this.blockRegistry.getByIdOrThrow(foregroundBlockId);
+        const backgroundBlock =
+          this.blockRegistry.getByIdOrThrow(backgroundBlockId);
+
+        const foregroundTexture = foregroundBlock.texture;
+        const backgroundTexture = backgroundBlock.texture;
+
+        const position = new Vector2(
           Number.parseInt(chunkX) * CHUNK_SIZE + x,
           Number.parseInt(chunkY) * CHUNK_SIZE + y,
         );
 
-        if (backgroundLight == 0) {
-          renderer.drawWorldRect(
-            camera,
-            position,
-            new Vector2(BLOCK_SIZE, BLOCK_SIZE),
-            this.getShadowTint(0)
-          );
-        } else {
-          if (foregroundTexture) {
-              renderer.drawWorldImage(
-              this.assetManager.getImage(foregroundTexture),
-              camera,
-              position,
-              new Vector2(BLOCK_SIZE, BLOCK_SIZE),
-            );
-          } else if (backgroundTexture) {
-            renderer.drawWorldImage(
-              this.assetManager.getImage(backgroundTexture),
-              camera,
-              position,
-              new Vector2(BLOCK_SIZE, BLOCK_SIZE),
-              backgroundTint
-            );
-          }
+        if (foregroundTexture) {
+          this.renderBlock(renderer, camera, foregroundBlock, position, true);
+        } else if (backgroundTexture) {
+          this.renderBlock(renderer, camera, backgroundBlock, position, false);
         }
       }
     }
   }
 
   render(renderer: Renderer, camera: Camera) {
-    this.loadNearbyChunks(camera); // Тимчасово
+    this.loadNearbyloadedChunks(camera); // Тимчасово
+    this.unloadFarChunks(camera);
 
     const cameraBlockCoords = this.worldToBlockCoords(camera.position);
     const cameraChunkX = this.worldToChunkCoord(cameraBlockCoords.x);
@@ -307,27 +388,20 @@ export default class World implements CollisionWorld {
 
     const chunkPixelSize = CHUNK_SIZE * BLOCK_SIZE;
 
-    const visibleChunksX = Math.ceil(camera.viewport.x / chunkPixelSize) + 1;
-    const visibleChunksY = Math.ceil(camera.viewport.y / chunkPixelSize) + 1;
+    const visibleloadedChunksX = Math.ceil(camera.viewport.x / chunkPixelSize) + 1;
+    const visibleloadedChunksY = Math.ceil(camera.viewport.y / chunkPixelSize) + 1;
 
-    const startX = Math.floor(-visibleChunksX / 2);
-    const startY = Math.floor(-visibleChunksY / 2);
+    const startX = Math.floor(-visibleloadedChunksX / 2);
+    const startY = Math.floor(-visibleloadedChunksY / 2);
 
-    const endX = startX + visibleChunksX;
-    const endY = startY + visibleChunksY;
+    const endX = startX + visibleloadedChunksX;
+    const endY = startY + visibleloadedChunksY;
 
     for (let x = startX; x <= endX; x++) {
       for (let y = startY; y <= endY; y++) {
         const chunkKey = `${cameraChunkX + x},${cameraChunkY + y}`;
-        if (this.chunks.has(chunkKey)) {
-          this.renderChunk(chunkKey, renderer, camera);
-        } else {
-          console.warn(`Chunk ${chunkKey} hasn't been generated before render`);
-          this.generateChunk(cameraChunkX + x, cameraChunkY + y);
-          this.renderChunk(chunkKey, renderer, camera);
-        }
+        this.renderChunk(chunkKey, renderer, camera);
       }
-
     }
 
     for (const entity of this.entities) {
@@ -364,8 +438,8 @@ export default class World implements CollisionWorld {
         );
         const transform = new Transform(
           this.blockToWorldCoords(x, y),
-          new Vector2(BLOCK_SIZE, BLOCK_SIZE)
-        )
+          new Vector2(BLOCK_SIZE, BLOCK_SIZE),
+        );
 
         worldColliders.push({
           collider,
@@ -377,13 +451,9 @@ export default class World implements CollisionWorld {
     return worldColliders;
   }
 
-  renderChunkLighting(
-    key: string,
-    renderer: Renderer,
-    camera: Camera
-  ) {
+  renderChunkLighting(key: string, renderer: Renderer, camera: Camera) {
     const [chunkX, chunkY] = key.split(",");
-    const chunk = this.chunks.get(key);
+    const chunk = this.loadedChunks.get(key);
 
     if (!chunk)
       throw new Error("Chunk you are trying to render is not generated yet");
@@ -402,7 +472,7 @@ export default class World implements CollisionWorld {
           camera,
           position,
           new Vector2(BLOCK_SIZE, BLOCK_SIZE),
-          tint
+          tint,
         );
       }
     }
@@ -415,21 +485,21 @@ export default class World implements CollisionWorld {
 
     const chunkPixelSize = CHUNK_SIZE * BLOCK_SIZE;
 
-    const visibleChunksX = Math.ceil(camera.viewport.x / chunkPixelSize) + 1;
-    const visibleChunksY = Math.ceil(camera.viewport.y / chunkPixelSize) + 1;
+    const visibleloadedChunksX = Math.ceil(camera.viewport.x / chunkPixelSize) + 1;
+    const visibleloadedChunksY = Math.ceil(camera.viewport.y / chunkPixelSize) + 1;
 
-    const startX = Math.floor(-visibleChunksX / 2);
-    const startY = Math.floor(-visibleChunksY / 2);
+    const startX = Math.floor(-visibleloadedChunksX / 2);
+    const startY = Math.floor(-visibleloadedChunksY / 2);
 
-    const endX = startX + visibleChunksX;
-    const endY = startY + visibleChunksY;
+    const endX = startX + visibleloadedChunksX;
+    const endY = startY + visibleloadedChunksY;
 
     for (let y = startY; y <= endY; y++) {
       for (let x = startX; x <= endX; x++) {
         const chunkKey = `${cameraChunkX + x},${cameraChunkY + y}`;
-        if (this.chunks.has(chunkKey)) {
+        if (this.loadedChunks.has(chunkKey)) {
           this.renderChunkLighting(chunkKey, renderer, camera);
-        } 
+        }
       }
     }
   }

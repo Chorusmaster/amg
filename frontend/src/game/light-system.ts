@@ -49,11 +49,7 @@ export default class LightSystem {
           const blockId = this.world.getBlock(x, y);
 
           if (blockId === undefined) {
-            if (!surfaceY || y < surfaceY) {
-              incomingLight = 0;
-            } else {
-              incomingLight = MAX_LIGHT;
-            }
+            incomingLight = MAX_LIGHT;
             continue;
           }
 

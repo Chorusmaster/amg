@@ -61,23 +61,28 @@ export default class Renderer {
       sprite.flipY ? -1 : 1
     );
 
+    const drawX = -screenSize.x / 2;
+    const drawY = -screenSize.y / 2;
+
     if (sprite.frame) {
+      const padding = 0.5;
+
       ctx.drawImage(
         sprite.image,
-        sprite.frame.x,
-        sprite.frame.y,
-        sprite.frame.width,
-        sprite.frame.height,
-        -screenSize.x / 2,
-        -screenSize.y / 2,
+        sprite.frame.x + padding,
+        sprite.frame.y + padding,
+        sprite.frame.width - padding * 2,
+        sprite.frame.height - padding * 2,
+        drawX,
+        drawY,
         screenSize.x,
         screenSize.y
       );
     } else {
       ctx.drawImage(
         sprite.image,
-        -screenSize.x / 2,
-        -screenSize.y / 2,
+        drawX,
+        drawY,
         screenSize.x,
         screenSize.y
       );

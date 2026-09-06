@@ -2,14 +2,15 @@
   {
     "id": 0,
     "name": "plains",
-    "surface": "grass",
+    "surface": "grass_block",
     "subsurface": "dirt",
     "underground": "stone",
     "minSurfaceDepth": 1,
     "maxSurfaceDepth": 1,
     "minSubsurfaceDepth": 4,
     "maxSubsurfaceDepth": 7,
-    "trees": true
+    "trees": true,
+    "grass": true
   },
   {
     "id": 0,
@@ -21,6 +22,7 @@
     "maxSurfaceDepth": 10,
     "minSubsurfaceDepth": 0,
     "maxSubsurfaceDepth": 0,
-    "trees": false
+    "trees": false,
+    "grass": false
   }
 ]

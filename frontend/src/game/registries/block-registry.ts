@@ -146,18 +146,62 @@ export default class BlockRegistry {
     if (rule.bottom === "same" && blockId !== context.bottom) return false;
     if (rule.bottom === "other" && blockId === context.bottom) return false;
     if (rule.bottom === "none" && context.bottom !== 0) return false;
+    if (rule.bottom === "other_solid") {
+      if (!context.bottom) {
+        return false;
+      }
+
+      const bottomBlock = this.getByIdOrThrow(context.bottom);
+
+      if (context.bottom === blockId || !bottomBlock.solid) {
+        return false;
+      }
+    }
 
     if (rule.top === "same" && blockId !== context.top) return false;
     if (rule.top === "other" && blockId === context.top) return false;
     if (rule.top === "none" && context.top !== 0) return false;
+    if (rule.top === "other_solid") {
+      if (!context.top) {
+        return false;
+      }
+
+      const bottomBlock = this.getByIdOrThrow(context.top);
+
+      if (context.top === blockId || !bottomBlock.solid) {
+        return false;
+      }
+    }
 
     if (rule.right === "same" && blockId !== context.right) return false;
     if (rule.right === "other" && blockId === context.right) return false;
     if (rule.right === "none" && context.right !== 0) return false;
+    if (rule.right === "other_solid") {
+      if (!context.right) {
+        return false;
+      }
+
+      const bottomBlock = this.getByIdOrThrow(context.right);
+
+      if (context.right === blockId || !bottomBlock.solid) {
+        return false;
+      }
+    }
 
     if (rule.left === "same" && blockId !== context.left) return false;
     if (rule.left === "other" && blockId === context.left) return false;
     if (rule.left === "none" && context.left !== 0) return false;
+    if (rule.left === "other_solid") {
+      if (!context.left) {
+        return false;
+      }
+
+      const bottomBlock = this.getByIdOrThrow(context.left);
+
+      if (context.left === blockId || !bottomBlock.solid) {
+        return false;
+      }
+    }
 
     if (
       rule.horizontal === "same" &&

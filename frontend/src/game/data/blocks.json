@@ -26,13 +26,13 @@
   },
   {
     "id": 2,
-    "name": "grass",
+    "name": "grass_block",
     "textureType": "single",
-    "texture": "grass",
+    "texture": "grass_block",
     "solid": true,
     "drops": [
       {
-        "item": "grass",
+        "item": "grass_block",
         "quantity": 1
       }
     ],
@@ -96,8 +96,8 @@
         "quantity": 1
       }
     ],
-    "lightOpacity": 0,
-    "emission": 14
+    "lightOpacity": 10,
+    "emission": 0
   },
   {
     "id": 7,
@@ -118,7 +118,7 @@
         "name": "trunk_base",
         "spriteIndex": 12,
         "rule" : {
-          "bottom": "other"
+          "bottom": "other_solid"
         }
       },
       {
@@ -207,12 +207,23 @@
         "spriteIndex": 11,
         "rule" : {
           "default": true
-        }
+        },
+        "randomRotation": true
       }
     ],
     "lightOpacity": 10,
     "emission": 0,
     "solid": false,
     "drops": []
+  },
+  {
+    "id": 9,
+    "name": "grass",
+    "textureType": "single",
+    "texture": "grass",
+    "solid": false,
+    "drops": [],
+    "lightOpacity": 5,
+    "emission": 0
   }
 ]

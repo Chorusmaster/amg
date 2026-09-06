@@ -15,7 +15,7 @@ export default class CaveGenerator {
   isCave(x: number, y: number): boolean {
     const surfaceHeight = this.terrainGenerator.getSurfaceHeight(x);
 
-    if (y >= surfaceHeight) {
+    if (y > surfaceHeight) {
       return false;
     }
 

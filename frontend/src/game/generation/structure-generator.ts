@@ -29,6 +29,12 @@ export default class StructureGenerator {
     return this.noise(x, 5) > 0.7;
   }
 
+  isGrass(x: number, biome: Biome): boolean {
+    if (!biome.grass) return false;
+
+    return this.noise(x, 5) < -0.4;
+  }
+
   prepareStructures(
     chunkX: number,
     chunkY: number,
@@ -61,7 +67,15 @@ export default class StructureGenerator {
     }
   }
 
-  getStructureBlock(x: number, y: number): string | undefined {
+  getStructureBlock(x: number, y: number, biome: Biome): string | undefined {
+    const surfaceHeight = this.terrainGenerator.getSurfaceHeight(x);
+    if (
+      y == surfaceHeight + 1 && 
+      this.isGrass(x, biome) && 
+      !this.generatedBlocks.get(`${x},${y}`)
+    ) {
+      return "grass";
+    }
     return this.generatedBlocks.get(`${x},${y}`);
   }
 
@@ -87,7 +101,7 @@ export default class StructureGenerator {
       for (let x = -radius; x <= radius; x++) {
         if (
           Math.abs(x) === radius &&
-          Math.random() < 0.3
+          Math.random() < 0.5
         ) {
           continue;
         }

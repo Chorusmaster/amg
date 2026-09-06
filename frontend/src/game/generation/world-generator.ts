@@ -57,7 +57,7 @@ export default class WorldGenerator {
         const worldY = chunkY * CHUNK_SIZE + localY;
         const biome = this.biomeGenerator.getBiome(worldX, worldY);
 
-        const structureBlock = this.structureGenerator.getStructureBlock(worldX, worldY);
+        const structureBlock = this.structureGenerator.getStructureBlock(worldX, worldY, biome);
         if (structureBlock) {
           chunk.setForeground(localX, localY, this.blockRegistry.getByNameOrThrow(structureBlock).id);
           continue;

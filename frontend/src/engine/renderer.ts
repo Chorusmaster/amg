@@ -65,12 +65,14 @@ export default class Renderer {
     const drawY = -screenSize.y / 2;
 
     if (sprite.frame) {
+      const padding = 0.5;
+
       ctx.drawImage(
         sprite.image,
-        sprite.frame.x,
-        sprite.frame.y,
-        sprite.frame.width,
-        sprite.frame.height,
+        sprite.frame.x + padding,
+        sprite.frame.y + padding,
+        sprite.frame.width - padding * 2,
+        sprite.frame.height - padding * 2,
         drawX,
         drawY,
         screenSize.x,

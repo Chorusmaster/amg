@@ -8,10 +8,10 @@
   },
   {
     "id": 1,
-    "name": "grass",
+    "name": "grass_block",
     "type": "block",
-    "block": "grass",
-    "texture": "grass"
+    "block": "grass_block",
+    "texture": "grass_block"
   },
   {
     "id": 2,

@@ -2,7 +2,7 @@ import type AssetManager from "../../engine/asset-manager";
 import type Renderer from "../../engine/renderer";
 import Vector2 from "../../engine/vector2";
 import type GameContext from "../game-context";
-import type ItemRegistry from "../item-registry";
+import type ItemRegistry from "../registries/item-registry";
 import type { ItemEntry } from "../item-stack";
 import type Input from "../../engine/input";
 
@@ -47,7 +47,7 @@ export default class Inventory {
     this.snapshot = {
       slots: this.slots,
       activeSlot: this.selectedSlot,
-      heldItem: this.cursorItem
+      heldItem: this.cursorItem,
     };
   }
 
@@ -61,19 +61,17 @@ export default class Inventory {
     for (let i = 0; i < slots.length && remaining > 0; i++) {
       const slot = slots[i];
 
-      if (!slot || slot.item !== entry.item)
-        continue;
+      if (!slot || slot.item !== entry.item) continue;
 
       const space = MAX_STACK - slot.quantity;
 
-      if (space <= 0)
-        continue;
+      if (space <= 0) continue;
 
       const amount = Math.min(space, remaining);
 
       slots[i] = {
         item: slot.item,
-        quantity: slot.quantity + amount
+        quantity: slot.quantity + amount,
       };
 
       remaining -= amount;
@@ -81,22 +79,20 @@ export default class Inventory {
     }
 
     for (let i = 0; i < slots.length && remaining > 0; i++) {
-      if (slots[i] !== null)
-        continue;
+      if (slots[i] !== null) continue;
 
       const amount = Math.min(MAX_STACK, remaining);
 
       slots[i] = {
         item: entry.item,
-        quantity: amount
+        quantity: amount,
       };
 
       remaining -= amount;
       changed = true;
     }
 
-    if (!changed)
-      return entry;
+    if (!changed) return entry;
 
     this.slots = slots;
     this.notify();
@@ -104,21 +100,19 @@ export default class Inventory {
     return remaining > 0
       ? {
           item: entry.item,
-          quantity: remaining
+          quantity: remaining,
         }
       : null;
   }
 
   selectNext() {
-    this.selectedSlot =
-      (this.selectedSlot + 1) % SLOTS_IN_ROW;
+    this.selectedSlot = (this.selectedSlot + 1) % SLOTS_IN_ROW;
 
     this.notify();
   }
 
   selectPrevious() {
-    this.selectedSlot =
-      (this.selectedSlot - 1 + SLOTS_IN_ROW) % SLOTS_IN_ROW;
+    this.selectedSlot = (this.selectedSlot - 1 + SLOTS_IN_ROW) % SLOTS_IN_ROW;
 
     this.notify();
   }
@@ -138,19 +132,17 @@ export default class Inventory {
   take(slotId: number) {
     console.trace("INVENTORY TAKE", slotId);
 
-    if (this.cursorItem !== null)
-      return;
+    if (this.cursorItem !== null) return;
 
     const slot = this.slots[slotId];
 
-    if (!slot)
-      return;
+    if (!slot) return;
 
     this.slots = [...this.slots];
 
     this.cursorItem = {
       item: slot.item,
-      quantity: slot.quantity
+      quantity: slot.quantity,
     };
 
     this.slots[slotId] = null;
@@ -160,9 +152,8 @@ export default class Inventory {
 
   place(slotId: number) {
     console.trace("INVENTORY PLACE", slotId);
-    
-    if (!this.cursorItem)
-      return;
+
+    if (!this.cursorItem) return;
 
     const cursorItem = this.cursorItem;
     const slot = this.slots[slotId];
@@ -182,7 +173,7 @@ export default class Inventory {
 
       this.slots[slotId] = {
         item: slot.item,
-        quantity: Math.min(total, MAX_STACK)
+        quantity: Math.min(total, MAX_STACK),
       };
 
       if (total <= MAX_STACK) {
@@ -190,7 +181,7 @@ export default class Inventory {
       } else {
         this.cursorItem = {
           item: cursorItem.item,
-          quantity: total - MAX_STACK
+          quantity: total - MAX_STACK,
         };
       }
 
@@ -205,8 +196,7 @@ export default class Inventory {
   }
 
   takeOutside() {
-    if (!this.cursorItem)
-      return null;
+    if (!this.cursorItem) return null;
 
     const item = this.cursorItem;
 
@@ -220,13 +210,11 @@ export default class Inventory {
   removeQuantity(slotId: number, quantity: number) {
     const slot = this.slots[slotId];
 
-    if (!slot)
-      throw new Error("This slot is empty");
+    if (!slot) throw new Error("This slot is empty");
 
     const newQuantity = slot.quantity - quantity;
 
-    if (newQuantity < 0)
-      throw new Error("Slot cannot have negative quantity");
+    if (newQuantity < 0) throw new Error("Slot cannot have negative quantity");
 
     this.slots = [...this.slots];
 
@@ -235,7 +223,7 @@ export default class Inventory {
     } else {
       this.slots[slotId] = {
         item: slot.item,
-        quantity: newQuantity
+        quantity: newQuantity,
       };
     }
 
@@ -258,7 +246,7 @@ export default class Inventory {
     this.snapshot = {
       slots: this.slots,
       activeSlot: this.selectedSlot,
-      heldItem: this.cursorItem
+      heldItem: this.cursorItem,
     };
 
     for (const listener of this.listeners) {

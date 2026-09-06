@@ -1,8 +1,8 @@
-import itemsData from "./data/items.json";
-import AssetManager from "../engine/asset-manager";
+import itemsData from "../data/items.json";
+import AssetManager from "../../engine/asset-manager";
 import type BlockRegistry from "./block-registry";
 
-export type Item = typeof itemsData[number];
+export type Item = (typeof itemsData)[number];
 
 export default class ItemRegistry {
   private itemsByName = new Map<string, Item>();
@@ -43,23 +43,26 @@ export default class ItemRegistry {
     return item;
   }
 
-  static async create(assetManager: AssetManager, blockRegistry: BlockRegistry) {
-    const textures = itemsData.filter(item => item.type == "item").map(item => item.texture);
+  static async create(
+    assetManager: AssetManager,
+    blockRegistry: BlockRegistry,
+  ) {
+    const textures = itemsData
+      .filter((item) => item.type == "item")
+      .map((item) => item.texture);
 
     await Promise.all(
-      textures.map(texture =>
-        texture &&
-        assetManager.loadImage(
-          texture,
-          `/assets/items/${texture}.png`
-        )
-      )
+      textures.map(
+        (texture) =>
+          texture &&
+          assetManager.loadImage(texture, `/assets/items/${texture}.png`),
+      ),
     );
 
-    const blockItems = itemsData.filter(item => item.type == "block");
+    const blockItems = itemsData.filter((item) => item.type == "block");
     for (const item of blockItems) {
       if (!item.block || !blockRegistry.getByName(item.block)) {
-        throw new Error(`Linked block to item ${item.name} doesn't exist`)
+        throw new Error(`Linked block to item ${item.name} doesn't exist`);
       }
     }
 

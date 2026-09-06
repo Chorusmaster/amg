@@ -61,6 +61,9 @@ export default class Renderer {
       sprite.flipY ? -1 : 1
     );
 
+    const drawX = -screenSize.x / 2;
+    const drawY = -screenSize.y / 2;
+
     if (sprite.frame) {
       ctx.drawImage(
         sprite.image,
@@ -68,16 +71,16 @@ export default class Renderer {
         sprite.frame.y,
         sprite.frame.width,
         sprite.frame.height,
-        -screenSize.x / 2,
-        -screenSize.y / 2,
+        drawX,
+        drawY,
         screenSize.x,
         screenSize.y
       );
     } else {
       ctx.drawImage(
         sprite.image,
-        -screenSize.x / 2,
-        -screenSize.y / 2,
+        drawX,
+        drawY,
         screenSize.x,
         screenSize.y
       );

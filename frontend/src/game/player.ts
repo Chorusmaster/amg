@@ -13,8 +13,8 @@ import { BLOCK_SIZE, SHOW_HITBOXES } from "./data/settings";
 import type GameContext from "./game-context";
 import Inventory from "./inventory/inventory";
 import ItemStack from "./item-stack";
-import type ItemRegistry from "./item-registry";
-import type BlockRegistry from "./block-registry";
+import type ItemRegistry from "./registries/item-registry";
+import type BlockRegistry from "./registries/block-registry";
 import Sprite from "../engine/sprite";
 import SpriteSheet from "../engine/spritesheet";
 import Animation from "../engine/animation";
@@ -49,18 +49,12 @@ export default class Player extends Entity {
     const playerSpritesheet = new SpriteSheet(playerImage, 64, 64);
     const playerSprite = new Sprite(
       playerSpritesheet.image,
-      playerSpritesheet.getFrame(0)
+      playerSpritesheet.getFrame(0),
     );
 
-    const idleAnimation = new Animation(
-      [playerSpritesheet.getFrame(0)],
-      10
-    );
+    const idleAnimation = new Animation([playerSpritesheet.getFrame(0)], 10);
 
-    const jumpAnimation = new Animation(
-      [playerSpritesheet.getFrame(4)],
-      10
-    );
+    const jumpAnimation = new Animation([playerSpritesheet.getFrame(4)], 10);
 
     const walkAnimation = new Animation(
       [
@@ -69,7 +63,7 @@ export default class Player extends Entity {
         playerSpritesheet.getFrame(2),
         playerSpritesheet.getFrame(3),
       ],
-      0.12
+      0.12,
     );
 
     const transform = new Transform(spawnPos, new Vector2(128, 128));
@@ -108,15 +102,15 @@ export default class Player extends Entity {
 
     if (other instanceof ItemStack) {
       other.items.forEach((value, key) => {
-        const remaining = this.inventory.add({item: key, quantity: value});
+        const remaining = this.inventory.add({ item: key, quantity: value });
         if (remaining) {
           itemsRemaining = true;
           other.items.set(key, remaining.quantity);
-        } 
+        }
       });
     }
 
-    if(!itemsRemaining) {
+    if (!itemsRemaining) {
       this.world.remove(other);
     }
   }
@@ -188,7 +182,7 @@ export default class Player extends Entity {
       this.sprite!.play(this.getAnimationOrThrow("walk"));
     }
 
-    if ((!this.input.isKeyDown("KeyA") && !this.input.isKeyDown("KeyD"))) {
+    if (!this.input.isKeyDown("KeyA") && !this.input.isKeyDown("KeyD")) {
       this.sprite!.play(this.getAnimationOrThrow("idle"));
     }
 
@@ -211,12 +205,18 @@ export default class Player extends Entity {
       const held = this.inventory.heldItem;
       if (held) {
         this.inventory.takeOutside();
-        const throwDirection = (this.input.mousePosition.x > this.camera.viewport.x / 2) ? 1 : -1;
+        const throwDirection =
+          this.input.mousePosition.x > this.camera.viewport.x / 2 ? 1 : -1;
         const stack = new ItemStack(
-          [held], 
-          this.assetManager.getImage(this.itemRegistry.getByNameOrThrow(held.item).texture),
-          new Vector2(this.transform.position.x + (50 * throwDirection), this.transform.position.y + 50),
-        )
+          [held],
+          this.assetManager.getImage(
+            this.itemRegistry.getByNameOrThrow(held.item).texture,
+          ),
+          new Vector2(
+            this.transform.position.x + 50 * throwDirection,
+            this.transform.position.y + 50,
+          ),
+        );
         this.world.add(stack);
       } else {
         if (!this.selectionInteractable()) return;
@@ -237,11 +237,15 @@ export default class Player extends Entity {
       const activeSlot = this.inventory.activeSlot;
       const activeSlotData = this.inventory.inventorySlots[activeSlot];
 
-      if (activeSlotData && activeSlotData.quantity > 0)  {
+      if (activeSlotData && activeSlotData.quantity > 0) {
         const item = this.itemRegistry.getByNameOrThrow(activeSlotData.item);
         if (item.block) {
           const blockId = this.blockRegistry.getByNameOrThrow(item.block).id;
-          this.world.setBlock(this.blockMouseCoords.x, this.blockMouseCoords.y, blockId);
+          this.world.setBlock(
+            this.blockMouseCoords.x,
+            this.blockMouseCoords.y,
+            blockId,
+          );
           this.inventory.removeQuantity(activeSlot, 1);
         }
       }
@@ -250,8 +254,7 @@ export default class Player extends Entity {
     const wheelDelta = this.input.consumeWheelDelta();
     if (wheelDelta > 0) {
       this.inventory.selectNext();
-    }
-    else if (wheelDelta < 0) {
+    } else if (wheelDelta < 0) {
       this.inventory.selectPrevious();
     }
   }

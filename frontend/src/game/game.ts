@@ -85,6 +85,7 @@ export default class SandboxGame implements Game {
 
     this.player.update(dt);
     this.physics.update(dt);
+    this.world.update(dt);
 
     this.camera.position = this.player.transform.position.clone();
   }
@@ -93,7 +94,7 @@ export default class SandboxGame implements Game {
     if (this.initialized === false)
       throw new Error("Game must be initialized first to render");
 
-    renderer.clear("skyblue");
+    renderer.clear(this.gameContext.dayNightState.skyColor);
 
     this.world.render(renderer, this.camera);
     this.player.render(renderer, this.camera);

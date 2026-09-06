@@ -16,7 +16,7 @@ import {
   CHUNK_SIZE,
   LOADED_CHUNKS_X,
   LOADED_CHUNKS_Y,
-  MAX_LIGHT,
+  MAX_LIGHT
 } from "./data/settings";
 
 import Collider from "../engine/physics/collider";
@@ -26,6 +26,10 @@ import type AssetManager from "../engine/asset-manager";
 import type BlockRegistry from "./registries/block-registry";
 import type ItemRegistry from "./registries/item-registry";
 import LightSystem from "./light-system";
+import WorldTime from "./world-time";
+import DayNightSystem from "./day-night-system";
+
+const initialTime = 0;
 
 export default class World implements CollisionWorld {
   private entities: Entity[] = [];
@@ -34,6 +38,8 @@ export default class World implements CollisionWorld {
   private blockRegistry: BlockRegistry;
   private itemRegistry: ItemRegistry;
   private assetManager: AssetManager;
+  private worldTime: WorldTime;
+  private dayNightSystem: DayNightSystem;
 
   readonly lightSystem: LightSystem;
   readonly worldGenerator: WorldGenerator;
@@ -41,7 +47,7 @@ export default class World implements CollisionWorld {
   readonly seed: string;
   readonly gravityAcceleration = 500;
 
-  readonly surfaceY = new Map<number, number>();
+  private sunBrightness = 1;
 
   constructor(gameContext: GameContext, seed?: string) {
     if (!seed) seed = Math.random().toString();
@@ -53,6 +59,20 @@ export default class World implements CollisionWorld {
     this.itemRegistry = gameContext.itemRegistry;
     this.worldGenerator = new WorldGenerator(seed, this);
     this.lightSystem = new LightSystem(this);
+    this.worldTime = new WorldTime(initialTime);
+    this.dayNightSystem = new DayNightSystem(this.worldTime);
+  }
+
+  update(dt: number) {
+    this.worldTime.update(dt);
+
+    const dayNightState = this.dayNightSystem.getState();
+    this.gameContext.dayNightState = dayNightState;
+    this.sunBrightness = dayNightState.sunBrightness;
+  }
+
+  get time() {
+    return this.worldTime;
   }
 
   // ENTITIES
@@ -131,7 +151,35 @@ export default class World implements CollisionWorld {
       if (!oldBlockId) return;
 
       const oldBlock = this.blockRegistry.getByIdOrThrow(oldBlockId);
-      const drops = oldBlock.drops;
+      const drops = oldBlock.drops
+        .map((item) => {
+          let processedQuantity: number;
+
+          if ("chance" in item) {
+            const dropped = Math.random() < item.chance;
+            if (!dropped) return null;
+          }
+
+          if (typeof item.quantity === "number") {
+            processedQuantity = item.quantity;
+          } else if (
+            typeof item.quantity === "object" &&
+            item.quantity !== null
+          ) {
+            processedQuantity =
+              Math.floor(
+                Math.random() * (item.quantity.max - item.quantity.min + 1),
+              ) + item.quantity.min;
+          } else {
+            throw new Error("Invalid item quantity format");
+          }
+
+          return {
+            item: item.item,
+            quantity: processedQuantity,
+          };
+        })
+        .filter((drop) => drop !== null);
 
       if (drops.length > 0) {
         const texture = this.itemRegistry.getByNameOrThrow(
@@ -158,7 +206,7 @@ export default class World implements CollisionWorld {
     }
 
     chunk.setForeground(localX, localY, block);
-    this.lightSystem.onBlockChanged();
+    this.lightSystem.onBlockChanged(x, y);
   }
 
   getBlockContext(x: number, y: number, foreground = true): BlockContext {
@@ -212,7 +260,7 @@ export default class World implements CollisionWorld {
     const localX = this.worldToLocalCoord(x);
     const localY = this.worldToLocalCoord(y);
 
-    return chunk.getTotalLight(localX, localY);
+    return chunk.getSkyLight(localX, localY) * this.sunBrightness;
   }
 
   // loadedCHUNKS
@@ -224,7 +272,6 @@ export default class World implements CollisionWorld {
   generateChunk(chunkX: number, chunkY: number) {
     const chunk = this.worldGenerator.generateChunk(chunkX, chunkY);
     this.chunks.set(`${chunkX},${chunkY}`, chunk);
-    this.lightSystem.onChunkLoaded();
 
     return chunk;
   }
@@ -255,10 +302,14 @@ export default class World implements CollisionWorld {
         const chunkY = y + cameraChunkY;
         const key = `${chunkX},${chunkY}`;
 
+        const wasLoaded = this.loadedChunks.has(key);
         if (!this.chunks.has(key)) {
           this.generateChunk(chunkX, chunkY);
         }
         this.loadedChunks.set(key, this.chunks.get(key)!);
+        if (!wasLoaded) {
+          this.lightSystem.onChunkLoaded(chunkX, chunkY);
+        }
       }
     }
   }
@@ -388,8 +439,10 @@ export default class World implements CollisionWorld {
 
     const chunkPixelSize = CHUNK_SIZE * BLOCK_SIZE;
 
-    const visibleloadedChunksX = Math.ceil(camera.viewport.x / chunkPixelSize) + 1;
-    const visibleloadedChunksY = Math.ceil(camera.viewport.y / chunkPixelSize) + 1;
+    const visibleloadedChunksX =
+      Math.ceil(camera.viewport.x / chunkPixelSize) + 1;
+    const visibleloadedChunksY =
+      Math.ceil(camera.viewport.y / chunkPixelSize) + 1;
 
     const startX = Math.floor(-visibleloadedChunksX / 2);
     const startY = Math.floor(-visibleloadedChunksY / 2);
@@ -460,12 +513,16 @@ export default class World implements CollisionWorld {
 
     for (let y = 0; y < CHUNK_SIZE; y++) {
       for (let x = 0; x < CHUNK_SIZE; x++) {
-        const light = chunk.getTotalLight(x, y);
+        const worldX = Number.parseInt(chunkX) * CHUNK_SIZE + x;
+        const worldY = Number.parseInt(chunkY) * CHUNK_SIZE + y;
+
+        //const light = chunk.getTotalLight(x, y);
+        const light = this.getLight(worldX, worldY) ?? 0;
         const tint = this.getShadowTint(light);
 
         const position = this.blockToWorldCoords(
-          Number.parseInt(chunkX) * CHUNK_SIZE + x,
-          Number.parseInt(chunkY) * CHUNK_SIZE + y,
+          worldX,
+          worldY,
         );
 
         renderer.drawWorldRect(
@@ -485,8 +542,10 @@ export default class World implements CollisionWorld {
 
     const chunkPixelSize = CHUNK_SIZE * BLOCK_SIZE;
 
-    const visibleloadedChunksX = Math.ceil(camera.viewport.x / chunkPixelSize) + 1;
-    const visibleloadedChunksY = Math.ceil(camera.viewport.y / chunkPixelSize) + 1;
+    const visibleloadedChunksX =
+      Math.ceil(camera.viewport.x / chunkPixelSize) + 1;
+    const visibleloadedChunksY =
+      Math.ceil(camera.viewport.y / chunkPixelSize) + 1;
 
     const startX = Math.floor(-visibleloadedChunksX / 2);
     const startY = Math.floor(-visibleloadedChunksY / 2);

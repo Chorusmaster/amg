@@ -38,5 +38,18 @@
     "name": "copper",
     "type": "item",
     "texture": "copper"
+  },
+  {
+    "id": 6,
+    "name": "planks",
+    "type": "block",
+    "block": "planks",
+    "texture": "planks"
+  },
+  {
+    "id": 7,
+    "name": "stick",
+    "type": "item",
+    "texture": "stick"
   }
 ]

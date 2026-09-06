@@ -5,6 +5,7 @@ import type BlockRegistry from "./registries/block-registry";
 import Inventory from "./inventory/inventory";
 import type ItemRegistry from "./registries/item-registry";
 import type BiomeRegistry from "./registries/biome-registry";
+import type { DayNightState } from "./day-night-system";
 
 export default class GameContext {
   readonly assetManager: AssetManager;
@@ -16,6 +17,11 @@ export default class GameContext {
 
   readonly inventory: Inventory;
   readonly viewport: Vector2;
+
+  public dayNightState: DayNightState = {
+    sunBrightness: 1,
+    skyColor: "skyblue"
+  };
 
   constructor(
     input: Input,

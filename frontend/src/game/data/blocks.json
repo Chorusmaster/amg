@@ -6,7 +6,7 @@
     "texture": null,
     "solid": false,
     "drops": [],
-    "lightOpacity": 1,
+    "lightOpacity": 2,
     "emission": 0
   },
   {
@@ -162,7 +162,12 @@
     "lightOpacity": 10,
     "emission": 0,
     "solid": false,
-    "drops": []
+    "drops": [
+      {
+        "item": "planks",
+        "quantity": 2
+      }
+    ]
   },
   {
     "id": 8,
@@ -214,7 +219,16 @@
     "lightOpacity": 10,
     "emission": 0,
     "solid": false,
-    "drops": []
+    "drops": [
+      {
+        "item": "stick",
+        "chance": 0.2,
+        "quantity": {
+          "min": 1,
+          "max": 2
+        }
+      }
+    ]
   },
   {
     "id": 9,
@@ -224,6 +238,21 @@
     "solid": false,
     "drops": [],
     "lightOpacity": 5,
+    "emission": 0
+  },
+  {
+    "id": 10,
+    "name": "planks",
+    "textureType": "single",
+    "texture": "planks",
+    "solid": true,
+    "drops": [
+      {
+        "item": "planks",
+        "quantity": 1
+      }
+    ],
+    "lightOpacity": 25,
     "emission": 0
   }
 ]

@@ -1,6 +1,7 @@
 import type { Biome } from "../registries/biome-registry";
 import type TerrainGenerator from "./terrain-generator";
 import { CHUNK_SIZE } from "../data/settings";
+import type CaveGenerator from "./cave-generator";
 
 type StructureBlock = {
   x: number;
@@ -11,6 +12,7 @@ type StructureBlock = {
 export default class StructureGenerator {
   private readonly noise: (x: number, y: number) => number;
   private readonly terrainGenerator: TerrainGenerator;
+  private readonly caveGenerator: CaveGenerator;
 
   private readonly generatedChunks = new Set<string>();
   private readonly generatedBlocks = new Map<string, string>();
@@ -18,9 +20,11 @@ export default class StructureGenerator {
   constructor(
     noise: (x: number, y: number) => number,
     terrainGenerator: TerrainGenerator,
+    caveGenerator: CaveGenerator,
   ) {
     this.noise = noise;
     this.terrainGenerator = terrainGenerator;
+    this.caveGenerator = caveGenerator;
   }
 
   isTree(x: number, biome: Biome): boolean {
@@ -52,8 +56,10 @@ export default class StructureGenerator {
       const startX = chunkX * CHUNK_SIZE + localX;
       const startY = this.terrainGenerator.getSurfaceHeight(startX) + 1;
       
+      const surfaceHeight = this.terrainGenerator.getSurfaceHeight(startX);
+      const isCave = this.caveGenerator.isCave(startX, surfaceHeight);
       const biome = getBiome(startX, startY);
-      if (!this.isTree(startX, biome)) {
+      if (!this.isTree(startX, biome) || isCave) {
         continue;
       }
 
@@ -69,10 +75,12 @@ export default class StructureGenerator {
 
   getStructureBlock(x: number, y: number, biome: Biome): string | undefined {
     const surfaceHeight = this.terrainGenerator.getSurfaceHeight(x);
+    const isCave = this.caveGenerator.isCave(x, surfaceHeight);
     if (
       y == surfaceHeight + 1 && 
       this.isGrass(x, biome) && 
-      !this.generatedBlocks.get(`${x},${y}`)
+      !this.generatedBlocks.get(`${x},${y}`) &&
+      !isCave
     ) {
       return "grass";
     }

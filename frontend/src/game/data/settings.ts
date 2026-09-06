@@ -13,3 +13,6 @@ export const ITEM_DESPAWN_TIME = 100000;
 
 export const MAX_LIGHT = 100;
 export const BACKGROUND_TINT = 50;
+
+export const DAY_LENGTH = 20 * 60;
+export const MIN_SKYLIGHT = 0.2;

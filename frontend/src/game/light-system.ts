@@ -7,6 +7,8 @@ type LightNode = {
   light: number;
 };
 
+const UNDERGROUND_LEVEL_DEPTH = -10;
+
 export default class LightSystem {
   private readonly world: World;
 
@@ -14,12 +16,80 @@ export default class LightSystem {
     this.world = world;
   }
 
-  onChunkLoaded(): void {
-    this.recalculateSunlight();
+  onChunkLoaded(chunkX: number, chunkY: number): void {
+    const minX = chunkX * CHUNK_SIZE;
+    const minY = chunkY * CHUNK_SIZE;
+    const maxX = minX + CHUNK_SIZE - 1;
+    const maxY = minY + CHUNK_SIZE - 1;
+    const queue: LightNode[] = [];
+
+    for (let y = minY; y <= maxY; y++) {
+      for (let x = minX; x <= maxX; x++) {
+        this.world.setSkyLight(x, y, 0);
+        if (this.isSunlightSource(x, y)) {
+          this.world.setSkyLight(x, y, MAX_LIGHT);
+          queue.push({ x, y, light: MAX_LIGHT });
+        }
+      }
+    }
+
+    for (let x = minX; x <= maxX; x++) {
+      this.addLoadedLightSeed(queue, x, minY - 1);
+      this.addLoadedLightSeed(queue, x, maxY + 1);
+    }
+    for (let y = minY; y <= maxY; y++) {
+      this.addLoadedLightSeed(queue, minX - 1, y);
+      this.addLoadedLightSeed(queue, maxX + 1, y);
+    }
+
+    this.propagateAcrossLoadedChunks(queue);
   }
 
-  onBlockChanged(): void {
-    this.recalculateSunlight();
+  onBlockChanged(x: number, y: number): void {
+    const previousLight = this.world.getSkyLight(x, y) ?? 0;
+    this.world.setSkyLight(x, y, 0);
+
+    const relightQueue: LightNode[] = [];
+    const removalQueue: LightNode[] = [{ x, y, light: previousLight }];
+    const visited = new Set<string>();
+
+    for (let index = 0; index < removalQueue.length; index++) {
+      const node = removalQueue[index];
+      const nodeKey = `${node.x},${node.y}`;
+      if (visited.has(nodeKey)) continue;
+      visited.add(nodeKey);
+
+      for (const [neighborX, neighborY] of this.getNeighbors(node.x, node.y)) {
+        const neighborLight = this.world.getSkyLight(neighborX, neighborY);
+        if (neighborLight === undefined || neighborLight === 0) continue;
+
+        if (
+          neighborLight < node.light ||
+          (neighborLight === node.light &&
+            !this.isSunlightSource(neighborX, neighborY))
+        ) {
+          this.world.setSkyLight(neighborX, neighborY, 0);
+          removalQueue.push({
+            x: neighborX,
+            y: neighborY,
+            light: neighborLight,
+          });
+        } else {
+          relightQueue.push({
+            x: neighborX,
+            y: neighborY,
+            light: neighborLight,
+          });
+        }
+      }
+    }
+
+    if (this.isSunlightSource(x, y)) {
+      this.world.setSkyLight(x, y, MAX_LIGHT);
+      relightQueue.push({ x, y, light: MAX_LIGHT });
+    }
+
+    this.propagateAcrossLoadedChunks(relightQueue);
   }
 
   recalculateSunlight(): void {
@@ -42,26 +112,28 @@ export default class LightSystem {
       const maxX = minX + CHUNK_SIZE - 1;
 
       for (let x = minX; x <= maxX; x++) {
-        let incomingLight = MAX_LIGHT;
-        const surfaceY = this.world.surfaceY.get(x);
+        const surfaceY = this.world.worldGenerator.getSurfaceY(x);
 
         for (let y = maxY; y >= minY; y--) {
-          const blockId = this.world.getBlock(x, y);
+          const foregroundBlockId = this.world.getBlock(x, y);
+          const backgroundBlockId = this.world.getBlock(x, y, false);
 
-          if (blockId === undefined) {
-            incomingLight = MAX_LIGHT;
+          if (foregroundBlockId == undefined || backgroundBlockId == undefined)
+            continue;
+          const foregroundBlock =
+            this.world.gameContext.blockRegistry.getByIdOrThrow(
+              foregroundBlockId,
+            );
+
+          if (
+            !foregroundBlock.solid &&
+            backgroundBlockId == 0 &&
+            y > surfaceY + UNDERGROUND_LEVEL_DEPTH
+          ) {
+            this.world.setSkyLight(x, y, MAX_LIGHT);
+            queue.push({ x, y, light: MAX_LIGHT });
             continue;
           }
-
-          if (incomingLight > 0) {
-            this.world.setSkyLight(x, y, incomingLight);
-            queue.push({ x, y, light: incomingLight });
-          }
-
-          incomingLight = Math.max(
-            0,
-            incomingLight - this.getBlockOpacity(blockId, true),
-          );
         }
       }
     }
@@ -86,14 +158,7 @@ export default class LightSystem {
   private propagateAcrossLoadedChunks(queue: LightNode[]): void {
     for (let index = 0; index < queue.length; index++) {
       const node = queue[index];
-      const neighbors = [
-        [node.x + 1, node.y],
-        [node.x - 1, node.y],
-        [node.x, node.y + 1],
-        [node.x, node.y - 1],
-      ] as const;
-
-      for (const [x, y] of neighbors) {
+      for (const [x, y] of this.getNeighbors(node.x, node.y)) {
         const blockId = this.world.getBlock(x, y);
         if (blockId === undefined) continue;
 
@@ -106,8 +171,44 @@ export default class LightSystem {
     }
   }
 
-  private getBlockOpacity(blockId: number, directSunlight = false): number {
+  private addLoadedLightSeed(queue: LightNode[], x: number, y: number): void {
+    const light = this.world.getSkyLight(x, y);
+    if (light !== undefined && light > 0) {
+      queue.push({ x, y, light });
+    }
+  }
+
+  private getNeighbors(
+    x: number,
+    y: number,
+  ): ReadonlyArray<readonly [number, number]> {
+    return [
+      [x + 1, y],
+      [x - 1, y],
+      [x, y + 1],
+      [x, y - 1],
+    ];
+  }
+
+  private isSunlightSource(x: number, y: number): boolean {
+    const foregroundBlockId = this.world.getBlock(x, y);
+    const backgroundBlockId = this.world.getBlock(x, y, false);
+    if (foregroundBlockId === undefined || backgroundBlockId === undefined) {
+      return false;
+    }
+
+    const foregroundBlock =
+      this.world.gameContext.blockRegistry.getByIdOrThrow(foregroundBlockId);
+    const surfaceY = this.world.worldGenerator.getSurfaceY(x);
+    return (
+      !foregroundBlock.solid &&
+      backgroundBlockId === 0 &&
+      y > surfaceY + UNDERGROUND_LEVEL_DEPTH
+    );
+  }
+
+  private getBlockOpacity(blockId: number): number {
     const block = this.world.gameContext.blockRegistry.getByIdOrThrow(blockId);
-    return directSunlight && !block.solid ? 0 : block.lightOpacity;
+    return block.lightOpacity;
   }
 }

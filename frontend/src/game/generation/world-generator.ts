@@ -36,7 +36,7 @@ export default class WorldGenerator {
     const terrainGenerator = new TerrainGenerator(noise);
     const caveGenerator = new CaveGenerator(noise, terrainGenerator);
     const oreGenerator = new OreGenerator(noise);
-    const structureGenerator = new StructureGenerator(noise, terrainGenerator);
+    const structureGenerator = new StructureGenerator(noise, terrainGenerator, caveGenerator);
 
     this.biomeGenerator = biomeGenerator;
     this.terrainGenerator = terrainGenerator;
@@ -45,6 +45,10 @@ export default class WorldGenerator {
     this.structureGenerator = structureGenerator;
 
     this.blockRegistry = world.gameContext.blockRegistry;
+  }
+
+  getSurfaceY(x: number) {
+    return this.terrainGenerator.getSurfaceHeight(x);
   }
 
   generateChunk(chunkX: number, chunkY: number): Chunk {
@@ -57,13 +61,13 @@ export default class WorldGenerator {
         const worldY = chunkY * CHUNK_SIZE + localY;
         const biome = this.biomeGenerator.getBiome(worldX, worldY);
 
+        const isCave = this.caveGenerator.isCave(worldX, worldY);
         const structureBlock = this.structureGenerator.getStructureBlock(worldX, worldY, biome);
         if (structureBlock) {
           chunk.setForeground(localX, localY, this.blockRegistry.getByNameOrThrow(structureBlock).id);
           continue;
         }
 
-        const isCave = this.caveGenerator.isCave(worldX, worldY);
         const terrainBlock = this.terrainGenerator.getTerrainBlock(worldX, worldY, biome);
         if (isCave) {
           chunk.setForeground(localX, localY, AIR);
